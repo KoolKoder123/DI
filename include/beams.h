@@ -8,6 +8,10 @@ void beamsBegin() {
   for (int i = 0; i < 4; i++) {
     pinMode(BEAM_PINS[i], INPUT_PULLUP); // Use internal resistor
   }
+  // Initialize beam memory with the actual current state to avoid false positives
+  for (int i = 0; i < 4; i++) {
+    beamLast[i] = digitalRead(BEAM_PINS[i]) == HIGH;
+  }
   Serial.println("Beams: Sensors Active");
 }
 
@@ -26,4 +30,12 @@ bool beamBroken(uint8_t i) {
 
   beamLast[i] = now; // Update memory for next loop
   return false;
+}
+
+// Reset the beam memory
+void beamsReset() {
+  for (int i = 0; i < 4; i++) {
+    beamLast[i] = digitalRead(BEAM_PINS[i]) == HIGH;
+  }
+  Serial.println("Beams: Memory Reset");
 }

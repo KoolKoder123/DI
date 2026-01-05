@@ -47,6 +47,8 @@ void loop() {
     case MODE_R1:
       if (currentMode != previousMode && IrReceiver.isIdle()) {
         ledsAllOff();
+        round1Reset();
+        beamsReset();
       }
       if (IrReceiver.isIdle()) round1Update(); 
       break;

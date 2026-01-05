@@ -12,6 +12,12 @@
 #define CODE_3  0xA15EFF00
 #define CODE_4  0xF708FF00
 #define CODE_5  0xE31CFF00
+#define Code_7  0xBD42FF00
+#define Code_8  0xAD52FF00
+#define Code_9  0xB54AFF00
+#define Code_prev  0xBB44FF00
+#define Code_next  0xBF40FF00
+#define Code_pause 0xBC43FF00
 
 void remoteBegin() {
   IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);

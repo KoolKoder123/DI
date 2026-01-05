@@ -7,11 +7,18 @@
 // We know CH- is this value:
 #define CODE_CH_MINUS  0xBA45FF00  
 #define CODE_CH_PLUS   0xB847FF00
+#define CODE_0  0xE916FF00
 #define CODE_1  0xF30CFF00
 #define CODE_2  0xE718FF00
 #define CODE_3  0xA15EFF00
 #define CODE_4  0xF708FF00
 #define CODE_5  0xE31CFF00
+#define Code_7  0xBD42FF00
+#define Code_8  0xAD52FF00
+#define Code_9  0xB54AFF00
+#define Code_prev  0xBB44FF00
+#define Code_next  0xBF40FF00
+#define Code_pause 0xBC43FF00
 
 void setup() {
   Serial.begin(9600);
@@ -38,6 +45,9 @@ void loop() {
         case CODE_CH_PLUS:
           Serial.println(">> ACTION: CH+ Pressed!");
           break;
+        case CODE_0:
+          Serial.println(">> ACTION: 0 Pressed!");
+          break;
         case CODE_1:
           Serial.println(">> ACTION: 1 Pressed!");
           break;
@@ -52,6 +62,24 @@ void loop() {
           break;
         case CODE_5:
           Serial.println(">> ACTION: 5 Pressed!");
+          break;
+        case Code_7:
+          Serial.println(">> ACTION: 7 Pressed!");
+          break;
+        case Code_8:
+          Serial.println(">> ACTION: 8 Pressed!");
+          break;
+        case Code_9:
+          Serial.println(">> ACTION: 9 Pressed!");
+          break;
+        case Code_prev:
+          Serial.println(">> ACTION: Prev Pressed!");
+          break;
+        case Code_next:
+          Serial.println(">> ACTION: Next Pressed!");
+          break;
+        case Code_pause:
+          Serial.println(">> ACTION: Pause Pressed!");
           break;
         default:
           Serial.print("Unknown Button Code: 0x");
