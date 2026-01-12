@@ -16,11 +16,11 @@
 // Number of LEDs per physical quadrant (what the strip actually has)
 #define LEDS_PER_QUAD (PHYS_ROWS * PHYS_COLS)
 
-#define BRIGHTNESS 40            // 0 (off) to 255 (blindingly bright)
+#define BRIGHTNESS 20            // 0 (off) to 255 (blindingly bright)
 
 // --- PINS ---
 // Digital pins for the LED Data wires
-const uint8_t LED_PINS[4]  = {6, 7, 8, 9};
+const uint8_t LED_PINS[4]  = {8, 9, 6, 7};
 // Digital pins for the IR Beam Break sensors
 const uint8_t BEAM_PINS[4] = {2, 3, 4, 5};
 // Pin for the IR Remote Receiver
@@ -48,3 +48,8 @@ enum Mode {
 
 // Global variable to track the current state
 extern Mode currentMode;
+
+// Flickering variables for bear face
+extern bool isFlickering;
+extern unsigned long nextToggleTime;
+extern bool bearOn;

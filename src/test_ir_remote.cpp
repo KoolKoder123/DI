@@ -16,9 +16,10 @@
 #define Code_7  0xBD42FF00
 #define Code_8  0xAD52FF00
 #define Code_9  0xB54AFF00
-#define Code_prev  0xBB44FF00
-#define Code_next  0xBF40FF00
-#define Code_pause 0xBC43FF00
+#define CODE_PREV  0xBB44FF00
+#define CODE_NEXT  0xBF40FF00
+#define CODE_PAUSE 0xBC43FF00
+#define CODE_VOL_MIN 0xF807FF00
 
 void setup() {
   Serial.begin(9600);
@@ -80,6 +81,9 @@ void loop() {
           break;
         case Code_pause:
           Serial.println(">> ACTION: Pause Pressed!");
+          break;
+        case Code_vol_min:
+          Serial.println(">> ACTION: Volume Minus Pressed!");
           break;
         default:
           Serial.print("Unknown Button Code: 0x");

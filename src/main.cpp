@@ -10,9 +10,16 @@ Mode currentMode = MODE_OFF;
 // Remember the previous mode so we can run enter-actions once
 Mode previousMode = MODE_OFF;
 
+// Flickering variables for bear face
+bool isFlickering = false;
+unsigned long nextToggleTime = 0;
+bool bearOn = true;
+
 void setup() {
   Serial.begin(9600); // Open connection to computer
   while (!Serial) delay(10); // Wait for connection
+
+  randomSeed(millis()); // Seed random number generator
 
   Serial.println("\n--- HIVE MIND SYSTEM START ---");
 
@@ -38,6 +45,7 @@ void loop() {
         ledsAllOff();
       }
       break;
+      
     case MODE_INTRO:  
       // IMPORTANT: Only update LEDs if the Remote is NOT talking.
       // If we update LEDs while remote is talking, we break the signal.
@@ -53,6 +61,33 @@ void loop() {
       if (IrReceiver.isIdle()) round1Update(); 
       break;
    
+    case MODE_R2:
+      if (currentMode != previousMode && IrReceiver.isIdle()) {
+        setBlueGradient();
+        delay(1000);
+        ledsAllOff();
+        // Very dark, muddy brown color for bear face
+        uint32_t bearColor = strips[0].Color(15, 8, 0);
+        for(int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+          drawBearFace(q, strips[0].Color(255,255,255), bearColor);
+        }
+        isFlickering = false; // reset flickering when entering mode
+      }
+      if (isFlickering && millis() >= nextToggleTime) {
+        bearOn = !bearOn;
+        if (bearOn) {
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          for(int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+            drawBearFace(q, strips[0].Color(255,255,255), bearColor);
+          }
+        } else {
+          ledsAllOff();
+        }
+        nextToggleTime = millis() + random(100, 400);
+      }
+      // Bear face stays on if not flickering
+      break;
+      
     case MODE_FINALE: 
       if (IrReceiver.isIdle()) finaleUpdate(); 
       break;

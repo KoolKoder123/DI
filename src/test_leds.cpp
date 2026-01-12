@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 
-#define LED_PIN     6   
-#define NUM_LEDS    300    
+#define LED_PIN     7 
+#define NUM_LEDS    350    
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -13,7 +13,7 @@ void setup() {
   // WAIT for the Serial Monitor to open (Specific to Uno R4/Leonardo boards)
   // The code will pause here until you connect via VS Code
   while (!Serial) {
-    delay(10); 
+    delay(1); 
   }
 
   Serial.println("\n--- STARTING LED TEST ---");
@@ -41,7 +41,7 @@ void loop() {
   }
 
   Serial.println("--- ALL LEDS ON. TEST COMPLETE. ---");
-  delay(2000); // Wait for 2 seconds with all LEDs ON
+  delay(1000); // Wait for 1 second with all LEDs ON
 
   Serial.println("Turning OFF...");
   strip.clear();  // Sets all pixels to '0' (Black) in memory
