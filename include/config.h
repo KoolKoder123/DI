@@ -26,9 +26,13 @@ const uint8_t BEAM_PINS[4] = {2, 3, 4, 5};
 // Pin for the IR Remote Receiver
 #define IR_RECEIVER_PIN 11
 
-// Analog pins for Potentiometers (Knobs) - Used in later rounds
-const uint8_t POT_PINS_R2[3] = {A0, A1, A2};
-#define POT_PIN_R3 A3
+//Contestant Mapping to Quadrants
+enum ContestantQuadrantMapping {
+  QUEEN = 0,
+  DOCTOR = 1,
+  HEIR = 2,
+  INFLUENCER = 3
+};
 
 // --- GAME STATES ---
 // The "State Machine" - tells the Arduino which rules to follow right now
