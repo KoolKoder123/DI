@@ -2,10 +2,19 @@
 #include <Arduino.h>
 
 // --- HARDWARE CONFIGURATION ---
-#define NUM_STRIPS_CONNECTED 1   // How many quadrants are physically wired up right now?
-#define QUAD_ROWS 19             // Height of the matrix
-#define QUAD_COLS 19             // Width of the matrix
-#define LEDS_PER_QUAD (QUAD_ROWS * QUAD_COLS)
+#define NUM_STRIPS_CONNECTED 4   // How many quadrants are physically wired up right now?
+#define QUAD_ROWS 18             // Height of the usable (visible) matrix
+#define QUAD_COLS 18             // Width of the usable (visible) matrix
+
+// Physical strip layout: the strip is routed in a 19x19 physical grid
+// but one LED per row is consumed by the serpentine turn and should
+// remain unused by the visible 18x18 matrix. Keep the usable
+// dimensions in `QUAD_*` and expose the physical dimensions below.
+#define PHYS_ROWS (QUAD_ROWS+1)       // Physical rows on the strip routing
+#define PHYS_COLS (QUAD_COLS+1)       // Physical cols on the strip routing
+
+// Number of LEDs per physical quadrant (what the strip actually has)
+#define LEDS_PER_QUAD (PHYS_ROWS * PHYS_COLS)
 
 #define BRIGHTNESS 40            // 0 (off) to 255 (blindingly bright)
 

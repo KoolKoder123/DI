@@ -24,12 +24,17 @@ void ledsBegin() {
 // Even Rows (0, 2, 4...) run Left -> Right.
 // Odd Rows (1, 3, 5...) run Right -> Left.
 uint16_t xyToIndex(uint8_t x, uint8_t y) {
+  // Safety: out-of-range requests map to 0
+  if (x >= QUAD_COLS || y >= QUAD_ROWS) return 0;
+
   if (y % 2 == 0) {
-    // Left to Right
-    return y * QUAD_COLS + x;
+    // Left to Right: usable columns map to physical cols 0..(QUAD_COLS-1)
+    return (uint16_t)y * PHYS_COLS + x;
   } else {
-    // Right to Left (Zig-Zag)
-    return y * QUAD_COLS + (QUAD_COLS - 1 - x);
+    // Right to Left: usable columns map to physical cols reversed
+    // We avoid the physical "turn" LED at column (PHYS_COLS-1), so
+    // map usable x=0..(QUAD_COLS-1) to physical columns (PHYS_COLS-2)..0
+    return (uint16_t)y * PHYS_COLS + (PHYS_COLS - 2 - x);
   }
 }
 
@@ -40,14 +45,15 @@ void drawProgress(uint8_t q, uint8_t rows, uint32_t color) {
   
   strips[q].clear(); // Turn off everything first
 
-  // Math: Calculate total LEDs needed to fill 'rows' amount of lines
-  int numLeds = rows * QUAD_COLS;
-  
-  // Safety: Don't try to light up more LEDs than we have
-  if (numLeds > LEDS_PER_QUAD) numLeds = LEDS_PER_QUAD;
+  // Fill `rows` usable lines from the bottom up using xyToIndex to
+  // map to physical strip indices (skipping turn LEDs).
+  if (rows > QUAD_ROWS) rows = QUAD_ROWS;
 
-  for (int i = 0; i < numLeds; i++) {
-    strips[q].setPixelColor(i, color);
+  for (uint8_t y = 0; y < rows; y++) {
+    for (uint8_t x = 0; x < QUAD_COLS; x++) {
+      uint16_t idx = xyToIndex(x, y);
+      strips[q].setPixelColor(idx, color);
+    }
   }
   strips[q].show();
 }
@@ -55,7 +61,13 @@ void drawProgress(uint8_t q, uint8_t rows, uint32_t color) {
 // Fills the whole quadrant with one color
 void fillQuad(uint8_t q, uint32_t color) {
   if (q >= NUM_STRIPS_CONNECTED) return;
-  strips[q].fill(color, 0, LEDS_PER_QUAD);
+  // Only fill the visible usable 18x18 matrix; keep turn LEDs off.
+  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
+    for (uint8_t x = 0; x < QUAD_COLS; x++) {
+      uint16_t idx = xyToIndex(x, y);
+      strips[q].setPixelColor(idx, color);
+    }
+  }
   strips[q].show();
 }
 

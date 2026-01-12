@@ -52,7 +52,7 @@ void loop() {
       }
       if (IrReceiver.isIdle()) round1Update(); 
       break;
-      
+   
     case MODE_FINALE: 
       if (IrReceiver.isIdle()) finaleUpdate(); 
       break;
