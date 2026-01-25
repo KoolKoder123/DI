@@ -416,3 +416,22 @@ void drawBearFace(uint8_t q, uint32_t outlineColor, uint32_t fillColor) {
   }
   strips[q].show();
 }
+
+// Draw a red 'X' in the quadrant: two diagonal lines 3 LEDs thick
+void drawRedX(uint8_t q) {
+  if (q >= NUM_STRIPS_CONNECTED) return;
+  strips[q].clear();
+  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
+    for (uint8_t x = 0; x < QUAD_COLS; x++) {
+      // Main diagonal: x == y (top-right to bottom-left)
+      // Other diagonal: x + y == QUAD_ROWS - 1 (top-left to bottom-right)
+      int diag1 = (int)x - (int)y;
+      int diag2 = (int)x + (int)y - (QUAD_ROWS - 1);
+      if (abs(diag1) <= 1 || abs(diag2) <= 1) {
+        uint16_t idx = xyToIndex(x, y);
+        strips[q].setPixelColor(idx, strips[q].Color(255, 0, 0));
+      }
+    }
+  }
+  strips[q].show();
+}

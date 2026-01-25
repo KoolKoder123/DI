@@ -19,7 +19,7 @@
 #define CODE_PREV  0xBB44FF00
 #define CODE_NEXT  0xBF40FF00
 #define CODE_PAUSE 0xBC43FF00
-#define CODE_VOL_MIN 0xF807FF00
+// CODE_VOL_MIN removed: bottom-left controlled by CODE_2 during MODE_R2
 
 void setup() {
   Serial.begin(9600);
@@ -82,9 +82,7 @@ void loop() {
         case Code_pause:
           Serial.println(">> ACTION: Pause Pressed!");
           break;
-        case Code_vol_min:
-          Serial.println(">> ACTION: Volume Minus Pressed!");
-          break;
+        
         default:
           Serial.print("Unknown Button Code: 0x");
           Serial.println(received_code, HEX);

@@ -16,7 +16,7 @@
 // Number of LEDs per physical quadrant (what the strip actually has)
 #define LEDS_PER_QUAD (PHYS_ROWS * PHYS_COLS)
 
-#define BRIGHTNESS 20            // 0 (off) to 255 (blindingly bright)
+#define BRIGHTNESS 50            // 0 (off) to 255 (blindingly bright)
 
 // --- PINS ---
 // Digital pins for the LED Data wires
@@ -34,6 +34,13 @@ enum ContestantQuadrantMapping {
   INFLUENCER = 3
 };
 
+// Physical quadrant index aliases (adjust if wiring differs)
+// Assumed mapping: 0 = Top-Left, 1 = Top-Right, 2 = Bottom-Right, 3 = Bottom-Left
+#define Q_TOP_LEFT 0
+#define Q_TOP_RIGHT 1
+#define Q_BOTTOM_RIGHT 2
+#define Q_BOTTOM_LEFT 3
+
 // --- GAME STATES ---
 // The "State Machine" - tells the Arduino which rules to follow right now
 enum Mode {
@@ -49,7 +56,20 @@ enum Mode {
 // Global variable to track the current state
 extern Mode currentMode;
 
-// Flickering variables for bear face
-extern bool isFlickering;
-extern unsigned long nextToggleTime;
-extern bool bearOn;
+// Flickering variables for bear face (per-quadrant)
+extern bool flickerActive[NUM_STRIPS_CONNECTED];
+extern unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED];
+extern bool bearOnPerQuad[NUM_STRIPS_CONNECTED];
+// Per-quadrant steady-on flags (set by CODE_7 + selector or CODE_2 lock)
+extern bool steadyActive[NUM_STRIPS_CONNECTED];
+// Armed state: CODE_8 arms flicker; CODE_PREV triggers it for a quadrant
+extern bool flickerArmed;
+// When true CODE_9 armed: select quadrants to flicker at a faster rate
+extern bool flickerFastArmed;
+// Per-quadrant marker for VERY fast flicker (set by CODE_9 selection)
+extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
+// (No single-target quadrant variable; per-quadrant arrays are used)
+// Armed state: CODE_7 arms a steady-on action for PREV to trigger
+extern bool steadyArmed;
+// When true the bottom-left quadrant stays bright red for the duration of MODE_R2
+extern bool bottomLeftLocked;

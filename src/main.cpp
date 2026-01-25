@@ -10,10 +10,22 @@ Mode currentMode = MODE_OFF;
 // Remember the previous mode so we can run enter-actions once
 Mode previousMode = MODE_OFF;
 
-// Flickering variables for bear face
-bool isFlickering = false;
-unsigned long nextToggleTime = 0;
-bool bearOn = true;
+// Flickering variables (per-quadrant)
+bool flickerActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
+unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED] = {0,0,0,0};
+bool bearOnPerQuad[NUM_STRIPS_CONNECTED] = {true, true, true, true};
+// Arm state used to select which quadrant to start flickering
+bool flickerArmed = false;
+// Fast-arm for CODE_9 selections
+bool flickerFastArmed = false;
+// Per-quadrant very-fast flicker flags
+bool flickerFastPerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
+// Per-quadrant steady state
+bool steadyActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
+// New: steady-armed state for CODE_7 -> CODE_PREV sequence
+bool steadyArmed = false;
+// Bottom-left lock: CODE_2 makes bottom-left stay bright red during MODE_R2
+bool bottomLeftLocked = false;
 
 void setup() {
   Serial.begin(9600); // Open connection to computer
@@ -68,22 +80,55 @@ void loop() {
         ledsAllOff();
         // Very dark, muddy brown color for bear face
         uint32_t bearColor = strips[0].Color(15, 8, 0);
+        // Immediately lock and fill bottom-left quadrant bright red for MODE_R2
+        bottomLeftLocked = true;
+        steadyActive[Q_BOTTOM_LEFT] = true;
+        drawRedX(Q_BOTTOM_LEFT);
+        // Draw bear face only on the other quadrants
         for(int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+          if (q == Q_BOTTOM_LEFT) continue;
           drawBearFace(q, strips[0].Color(255,255,255), bearColor);
         }
-        isFlickering = false; // reset flickering when entering mode
+        // Reset per-quadrant flicker state on mode entry
+        for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
+          flickerActive[i] = false;
+          nextToggleTimePerQuad[i] = 0;
+          bearOnPerQuad[i] = true;
+          flickerFastPerQuad[i] = false;
+        }
+        flickerArmed = false; // clear any armed state
+        // keep bottomLeftLocked = true so bottom-left stays bright red during MODE_R2
       }
-      if (isFlickering && millis() >= nextToggleTime) {
-        bearOn = !bearOn;
-        if (bearOn) {
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          for(int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+      // Per-quadrant flicker handling: allow multiple quadrants to flicker independently
+      for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+        if (!flickerActive[q]) continue;
+      if (steadyActive[q]) continue; // steady quadrants do not flicker
+        if (millis() < nextToggleTimePerQuad[q]) continue;
+
+        // Toggle this quadrant's bear state
+        bearOnPerQuad[q] = !bearOnPerQuad[q];
+
+        if (bearOnPerQuad[q]) {
+          // If the quadrant is locked (bottom-left), skip drawing bear there
+          if (!(q == Q_BOTTOM_LEFT && bottomLeftLocked)) {
+            uint32_t bearColor = strips[0].Color(15, 8, 0);
             drawBearFace(q, strips[0].Color(255,255,255), bearColor);
           }
         } else {
-          ledsAllOff();
+          // Turn off this quadrant unless it's locked to bright red
+          if (!(q == Q_BOTTOM_LEFT && bottomLeftLocked)) {
+            strips[q].clear();
+            strips[q].show();
+          }
         }
-        nextToggleTime = millis() + random(100, 400);
+
+        // Choose next toggle interval based on whether this quadrant was
+        // selected for VERY-fast flicker (CODE_9) or normal flicker.
+        if (flickerFastPerQuad[q]) {
+          nextToggleTimePerQuad[q] = millis() + random(20, 100);
+        } else {
+          nextToggleTimePerQuad[q] = millis() + random(300, 600);
+        }
       }
       // Bear face stays on if not flickering
       break;
