@@ -341,7 +341,7 @@ void readRemote() {
   // 4. Log changes to Serial Monitor for debugging
   if (currentMode != prev) {
     Serial.print(">> Mode Switched: ");
-    Serial.println((int)currentMode);
+    Serial.println(modeToString(currentMode));
   }
 
   // 5. Reset receiver to listen again

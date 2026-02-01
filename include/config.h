@@ -53,6 +53,23 @@ enum Mode {
   MODE_FINALE
 };
 
+// Convert Mode enum value to human-readable string
+inline const char* modeToString(Mode m) {
+  switch (m) {
+    case MODE_OFF: return "MODE_OFF";
+    case MODE_INTRO: return "MODE_INTRO";
+    case MODE_R1: return "MODE_R1";
+    case MODE_R2: return "MODE_R2";
+    case MODE_R3: return "MODE_R3";
+    case MODE_R4: return "MODE_R4";
+    case MODE_FINALE: return "MODE_FINALE";
+    default: return "UNKNOWN_MODE";
+  }
+}
+
+// Overload accepting integer values (casts to Mode)
+inline const char* modeToString(int m) { return modeToString(static_cast<Mode>(m)); }
+
 // Global variable to track the current state
 extern Mode currentMode;
 
