@@ -435,3 +435,20 @@ void drawRedX(uint8_t q) {
   }
   strips[q].show();
 }
+
+// Draw a red 'X' over the current contents (do not clear first).
+// This overwrites any pixels of the bear that intersect the X.
+void drawRedXOver(uint8_t q) {
+  if (q >= NUM_STRIPS_CONNECTED) return;
+  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
+    for (uint8_t x = 0; x < QUAD_COLS; x++) {
+      int diag1 = (int)x - (int)y;
+      int diag2 = (int)x + (int)y - (QUAD_ROWS - 1);
+      if (abs(diag1) <= 1 || abs(diag2) <= 1) {
+        uint16_t idx = xyToIndex(x, y);
+        strips[q].setPixelColor(idx, strips[q].Color(255, 0, 0));
+      }
+    }
+  }
+  strips[q].show();
+}

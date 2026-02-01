@@ -1,4 +1,11 @@
 #pragma once
+
+// Increase tolerance for IR mark/space matching to allow more timing jitter.
+// This overrides the library default (25%) if not already defined.
+#ifndef TOLERANCE_FOR_DECODERS_MARK_OR_SPACE_MATCHING_PERCENT
+#define TOLERANCE_FOR_DECODERS_MARK_OR_SPACE_MATCHING_PERCENT 40
+#endif
+
 #include <IRremote.hpp>
 #include "config.h"
 
@@ -18,6 +25,8 @@
 #define CODE_PREV  0xBB44FF00
 #define CODE_NEXT  0xBF40FF00
 #define CODE_PAUSE 0xBC43FF00
+#define CODE_LOSE  0xE619FF00
+#define CODE_WIN 0xF20DFF00
 
 void remoteBegin() {
   IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);
@@ -30,13 +39,24 @@ void readRemote() {
 
   delay(100); // Wait 0.1s for the IR signal to fully settle
   
-  // 2. Is it a "Repeat" signal? (holding the button down)
-  if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT) {
-    IrReceiver.resume(); // Ignore it and listen for next signal
-    return;
+  // 2. Handle repeat signals: if it's a repeat and we have no previous
+  // valid code, ignore. Otherwise treat the repeat as the same code
+  // as the last successfully decoded code. This helps when short
+  // blocking operations (like NeoPixel.show()) corrupt the first frame
+  // but the remote will send repeat frames while the button is held.
+  static uint32_t lastRemoteCode = 0;
+  bool isRepeat = (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT);
+  uint32_t code;
+  if (isRepeat) {
+    if (lastRemoteCode == 0) {
+      IrReceiver.resume();
+      return;
+    }
+    code = lastRemoteCode;
+  } else {
+    code = IrReceiver.decodedIRData.decodedRawData;
+    lastRemoteCode = code;
   }
-
-  uint32_t code = IrReceiver.decodedIRData.decodedRawData;
   Mode prev = currentMode;
 
   // 3. Map buttons to Game Modes
@@ -91,9 +111,91 @@ void readRemote() {
         Serial.println("Fast flicker armed: press selector(s) to begin VERY fast quadrant flicker");
       }
       break;
+    case CODE_LOSE:
+      if (currentMode == MODE_R2) {
+        int idx = Q_BOTTOM_RIGHT;
+        // Stop any flicker/steady on other quadrants so only bottom-right will run the lose sequence
+        for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
+          if (i == idx) continue;
+          flickerActive[i] = false;
+          flickerFastPerQuad[i] = false;
+          flickerLosePerQuad[i] = false;
+        }
+        // Start the precise lose-sequence on bottom-right: 10 toggles at 50ms
+        loseSequenceActive[idx] = true;
+        loseSequenceCount[idx] = 0;
+        loseSequenceNextToggle[idx] = millis() + 50; // first toggle after 50ms
+        // Ensure quadrant is prepared
+        flickerActive[idx] = false;
+        flickerFastPerQuad[idx] = false;
+        flickerLosePerQuad[idx] = false;
+        steadyActive[idx] = false;
+        bearOnPerQuad[idx] = true;
+        uint32_t bearColor = strips[0].Color(15, 8, 0);
+        drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+        // If specific white pixels exist in the bear, change them to brown
+        // Coordinates are in quadrant-local (x,y) space.
+        uint32_t whiteCol = strips[idx].Color(255,255,255);
+        uint32_t brownCol = strips[idx].Color(15,8,0);
+        uint16_t p;
+        p = xyToIndex(6, 9);
+        if (strips[idx].getPixelColor(p) == whiteCol) strips[idx].setPixelColor(p, brownCol);
+        p = xyToIndex(11, 13);
+        if (strips[idx].getPixelColor(p) == whiteCol) strips[idx].setPixelColor(p, brownCol);
+        p = xyToIndex(12, 14);
+        if (strips[idx].getPixelColor(p) == whiteCol) strips[idx].setPixelColor(p, brownCol);
+        strips[idx].show();
+        Serial.println("CODE_LOSE: Bottom-right lose-sequence started (10x @50ms)");
+      }
+      break;
     // When CODE_8 has armed flicker, these keys choose the quadrant to flicker
     case CODE_NEXT:
-      if (currentMode == MODE_R2) {
+      if (currentMode == MODE_R3) {
+        // MODE_R3: find the very first GREEN column from the left and
+        // convert it to BLUE. Scan the entire top-left (left->right) first,
+        // then scan top-right (left->right) only if none found.
+        int ql = Q_TOP_LEFT;
+        int qr = Q_TOP_RIGHT;
+        uint32_t blue = strips[0].Color(0,0,255);
+        bool converted = false;
+        // Scan top-left fully
+        for (int x = 0; x < QUAD_COLS; x++) {
+          if (topLeftColumnColor[x] == 1) {
+            for (int y = 0; y < QUAD_ROWS; y++) strips[ql].setPixelColor(xyToIndex(x, y), blue);
+            topLeftColumnColor[x] = 0; // now blue
+            // Clear any random flash state for LEDs in this column so
+            // a pending random-flash restore doesn't overwrite the change.
+            for (int y = 0; y < QUAD_ROWS; y++) {
+              uint16_t physIdx = xyToIndex(x, y);
+              int flat = ql * LEDS_PER_QUAD + physIdx;
+              randomFlashActive[flat] = false;
+              randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
+              randomFlashEndTime[flat] = 0;
+            }
+            strips[ql].show();
+            converted = true;
+            break;
+          }
+        }
+        // If nothing converted in top-left, scan top-right
+        if (!converted) {
+          for (int x = 0; x < QUAD_COLS; x++) {
+            if (topRightColumnColor[x] == 1) {
+              for (int y = 0; y < QUAD_ROWS; y++) {
+                uint16_t physIdx = xyToIndex(x, y);
+                strips[qr].setPixelColor(physIdx, blue);
+                int flat = qr * LEDS_PER_QUAD + physIdx;
+                randomFlashActive[flat] = false;
+                randomFlashSavedColor[flat] = strips[qr].getPixelColor(physIdx);
+                randomFlashEndTime[flat] = 0;
+              }
+              topRightColumnColor[x] = 0; // now blue
+              strips[qr].show();
+              break;
+            }
+          }
+        }
+      } else if (currentMode == MODE_R2) {
         int idx = Q_TOP_RIGHT;
         if (flickerFastArmed) {
           // Start VERY fast flickering top-right quadrant (additive)
@@ -158,7 +260,48 @@ void readRemote() {
       break;
     
     case CODE_PREV:
-      if (currentMode == MODE_R2) {
+      if (currentMode == MODE_R3) {
+        // MODE_R3: find the first BLUE column from the right and convert it to GREEN.
+        // Search top-right first, then top-left. Only convert one column per press.
+        int ql = Q_TOP_LEFT;
+        int qr = Q_TOP_RIGHT;
+        uint32_t green = strips[0].Color(0,255,0);
+        bool converted = false;
+          for (int x = QUAD_COLS - 1; x >= 0; x--) {
+          // Check top-right for BLUE (0)
+          if (topRightColumnColor[x] == 0) {
+            for (int y = 0; y < QUAD_ROWS; y++) {
+              uint16_t physIdx = xyToIndex(x, y);
+              strips[qr].setPixelColor(physIdx, green);
+              int flat = qr * LEDS_PER_QUAD + physIdx;
+              randomFlashActive[flat] = false;
+              randomFlashSavedColor[flat] = strips[qr].getPixelColor(physIdx);
+              randomFlashEndTime[flat] = 0;
+            }
+            topRightColumnColor[x] = 1; // now green
+            strips[qr].show();
+            converted = true;
+            break;
+          }
+        }
+        if (!converted) {
+          for (int x = QUAD_COLS - 1; x >= 0; x--) {
+            if (topLeftColumnColor[x] == 0) {
+              for (int y = 0; y < QUAD_ROWS; y++) {
+                uint16_t physIdx = xyToIndex(x, y);
+                strips[ql].setPixelColor(physIdx, green);
+                int flat = ql * LEDS_PER_QUAD + physIdx;
+                randomFlashActive[flat] = false;
+                randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
+                randomFlashEndTime[flat] = 0;
+              }
+              topLeftColumnColor[x] = 1; // now green
+              strips[ql].show();
+              break;
+            }
+          }
+        }
+      } else if (currentMode == MODE_R2) {
         int idx = Q_TOP_LEFT;
         if (flickerFastArmed) {
           // Start VERY fast flickering top-left quadrant (additive)

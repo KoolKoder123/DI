@@ -68,7 +68,24 @@ extern bool flickerArmed;
 extern bool flickerFastArmed;
 // Per-quadrant marker for VERY fast flicker (set by CODE_9 selection)
 extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
+// Per-quadrant fixed-lose flicker flag (activated by CODE_LOSE)
+extern bool flickerLosePerQuad[NUM_STRIPS_CONNECTED];
 // (No single-target quadrant variable; per-quadrant arrays are used)
+// MODE_R3 state: which columns in top-left have been turned white
+extern bool topLeftColumnsWhite[QUAD_COLS];
+// MODE_R3 state: which columns in top-right are white (true) or yellow (false)
+extern bool topRightColumnsWhite[QUAD_COLS];
+// MODE_R3: per-column color state: 0 = BLUE, 1 = GREEN
+extern uint8_t topLeftColumnColor[QUAD_COLS];
+extern uint8_t topRightColumnColor[QUAD_COLS];
+// Random flash arrays (defined in src/main.cpp)
+extern bool randomFlashActive[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
+extern uint32_t randomFlashSavedColor[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
+extern unsigned long randomFlashEndTime[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
+// Lose sequence state (defined in src/main.cpp)
+extern bool loseSequenceActive[NUM_STRIPS_CONNECTED];
+extern int loseSequenceCount[NUM_STRIPS_CONNECTED];
+extern unsigned long loseSequenceNextToggle[NUM_STRIPS_CONNECTED];
 // Armed state: CODE_7 arms a steady-on action for PREV to trigger
 extern bool steadyArmed;
 // When true the bottom-left quadrant stays bright red for the duration of MODE_R2
