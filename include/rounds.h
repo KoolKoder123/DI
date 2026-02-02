@@ -1,33 +1,24 @@
 #pragma once
-#include "leds.h"
-#include "beams.h"
 
-// Score tracking: How many rows are filled in each quadrant?
-uint8_t r1Rows[4] = {0,0,0,0};
+// Rounds "hub" include.
+//
+// This file keeps main.cpp tidy and provides a consistent naming
+// convention for each round.
+//
+// NOTE: Round 2 and Round 3 logic currently live in main.cpp.
+// Round 1 and Round 4 are split out because they are planned to diverge.
 
-void round1Update() {
-  for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
-    
-    // 1. Check if a ball passed through the beam
-    if (beamBroken(q)) {
-      // Interior can hold up to (QUAD_ROWS - 2) rows
-      int maxInteriorRows = QUAD_ROWS - 2;
-      if (r1Rows[q] < maxInteriorRows) {
-        r1Rows[q]++; // Increase score
-        Serial.print("Point for Quad "); Serial.println(q);
-      }
-    }
+#include "mode_round1.h"
+#include "mode_round4.h"
 
-    // 2. Draw the jar border (fuchsia) and interior honey gradient in a single pass
-    // Use a brighter fuchsia border and specified top honey color for gradient
-    drawJarWithProgress(q, r1Rows[q], strips[q].Color(255, 120, 255), 240, 240, 150); // Brighter fuchsia border, top honey (240,240,150)
-  }
-}
+// -----------------------------
+// Backward-compatible wrappers
+// -----------------------------
+// Older code used round1Update/round1Reset.
+// Keep these wrappers so existing files still compile.
 
-// Reset Round 1 scores
-void round1Reset() {
-  for (int i = 0; i < 4; i++) {
-    r1Rows[i] = 0;
-  }
-  Serial.println("Round 1: Scores Reset");
-}
+static inline void round1Update() { roundR1Update(); }
+static inline void round1Reset()  { roundR1Reset(); }
+
+static inline void round4Update() { roundR4Update(); }
+static inline void round4Reset()  { roundR4Reset(); }

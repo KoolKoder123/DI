@@ -20,7 +20,7 @@ bool flickerArmed = false;
 bool flickerFastArmed = false;
 // Per-quadrant very-fast flicker flags
 bool flickerFastPerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
-// Per-quadrant fixed-lose flicker flags (CODE_LOSE -> fixed 40ms)
+// Per-quadrant fixed-lose flicker flags (CODE_100 -> fixed 40ms)
 bool flickerLosePerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 // Per-quadrant steady state
 bool steadyActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
@@ -36,7 +36,7 @@ bool steadyArmed = false;
 // Bottom-left lock: CODE_2 makes bottom-left stay bright red during MODE_R2
 bool bottomLeftLocked = false;
 
-// Lose-sequence state for CODE_LOSE (MODE_R2)
+// Lose-sequence state for CODE_100 (MODE_R2)
 // Sequence: toggle 10 times at exactly 50ms intervals, then draw X over bear.
 bool loseSequenceActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 int loseSequenceCount[NUM_STRIPS_CONNECTED] = {0, 0, 0, 0};
@@ -151,24 +151,12 @@ void loop() {
     case MODE_R1:
       if (currentMode != previousMode && IrReceiver.isIdle()) {
         ledsAllOff();
-        round1Reset();
+        roundR1Reset();
         beamsReset();
       }
-      if (IrReceiver.isIdle()) round1Update(); 
+      if (IrReceiver.isIdle()) roundR1Update(); 
       break;
   
-    case MODE_R4:
-      // Duplicate of MODE_R1 behaviour so MODE_R4 starts with the same
-      // jar visuals and uses the same IR-beam scoring logic. This allows
-      // future modifications to MODE_R4 without changing MODE_R1.
-      if (currentMode != previousMode && IrReceiver.isIdle()) {
-        ledsAllOff();
-        round1Reset();
-        beamsReset();
-      }
-      if (IrReceiver.isIdle()) round1Update();
-      break;
-   
     case MODE_R2:
       if (currentMode != previousMode && IrReceiver.isIdle()) {
         setBlueGradient();
@@ -270,7 +258,7 @@ void loop() {
         // Choose next toggle interval based on whether this quadrant was
         // selected for VERY-fast flicker (CODE_9) or normal flicker.
         if (flickerLosePerQuad[q]) {
-          // Fixed, deterministic very-fast flicker for CODE_LOSE
+          // Fixed, deterministic very-fast flicker for CODE_100
           nextToggleTimePerQuad[q] = millis() + 40;
         } else if (flickerFastPerQuad[q]) {
           nextToggleTimePerQuad[q] = millis() + random(20, 100);
@@ -320,7 +308,18 @@ void loop() {
         randomFlashTryStart();
         randomFlashUpdate();
       break;
-      
+
+    case MODE_R4:
+      // Starts as a copy of MODE_R1 behaviour, but lives in its own file
+      // so you can change Round 4 later without touching Round 1.
+      if (currentMode != previousMode && IrReceiver.isIdle()) {
+        ledsAllOff();
+        roundR4Reset();
+        beamsReset();
+      }
+      if (IrReceiver.isIdle()) roundR4Update();
+      break;
+
     case MODE_FINALE: 
       if (IrReceiver.isIdle()) finaleUpdate(); 
       break;
@@ -330,7 +329,7 @@ void loop() {
       break;
   }
 
-  // Small pause to keep things stable. When the CODE_LOSE fixed very-fast
+  // Small pause to keep things stable. When the CODE_100 fixed very-fast
   // flicker is active we avoid the long 50ms delay so the remote is polled
   // more often (increasing chance of catching button presses between show() calls).
   bool anyLoseActive = false;

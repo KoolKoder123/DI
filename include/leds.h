@@ -10,7 +10,7 @@ Adafruit_NeoPixel strips[4] = {
   Adafruit_NeoPixel(LEDS_PER_QUAD, LED_PINS[3], NEO_GRB + NEO_KHZ800)
 };
 
-void ledsBegin() {
+static inline void ledsBegin() {
   for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
     strips[i].begin();
     strips[i].setBrightness(BRIGHTNESS);
@@ -180,7 +180,7 @@ void drawProgressInterior(uint8_t q, uint8_t rows, uint32_t color) {
   strips[q].show();
 }
 
-void ledsAllOff() {
+static inline void ledsAllOff() {
   // ATTEMPT 1: Clear the buffer and push
   for(int i=0; i<NUM_STRIPS_CONNECTED; i++) {
     strips[i].clear();

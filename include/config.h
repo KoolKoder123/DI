@@ -85,7 +85,7 @@ extern bool flickerArmed;
 extern bool flickerFastArmed;
 // Per-quadrant marker for VERY fast flicker (set by CODE_9 selection)
 extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
-// Per-quadrant fixed-lose flicker flag (activated by CODE_LOSE)
+// Per-quadrant fixed-lose flicker flag (activated by CODE_100)
 extern bool flickerLosePerQuad[NUM_STRIPS_CONNECTED];
 // (No single-target quadrant variable; per-quadrant arrays are used)
 // MODE_R3 state: which columns in top-left have been turned white

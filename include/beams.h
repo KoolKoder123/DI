@@ -4,7 +4,7 @@
 // Memory to remember if the beam was broken last time we checked
 bool beamLast[4] = {false, false, false, false};
 
-void beamsBegin() {
+static inline void beamsBegin() {
   for (int i = 0; i < 4; i++) {
     pinMode(BEAM_PINS[i], INPUT_PULLUP); // Use internal resistor
   }
@@ -17,7 +17,7 @@ void beamsBegin() {
 
 // Returns TRUE only the exact moment the beam is broken.
 // If you hold your hand in the beam, this only returns true once.
-bool beamBroken(uint8_t i) {
+static inline bool isBeamJustBroken(uint8_t i) {
   // With INPUT_PULLUP: LOW = beam connected (seeing light), HIGH = beam broken
   bool now = digitalRead(BEAM_PINS[i]) == HIGH; // HIGH means beam is broken
 
@@ -33,7 +33,7 @@ bool beamBroken(uint8_t i) {
 }
 
 // Reset the beam memory
-void beamsReset() {
+static inline void beamsReset() {
   for (int i = 0; i < 4; i++) {
     beamLast[i] = digitalRead(BEAM_PINS[i]) == HIGH;
   }

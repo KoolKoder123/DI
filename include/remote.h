@@ -9,6 +9,15 @@
 #include <IRremote.hpp>
 #include "config.h"
 
+// Some IRremote flag macros differ slightly between versions.
+// Provide safe fallbacks so this project stays buildable.
+#ifndef IRDATA_FLAGS_WAS_OVERFLOW
+#define IRDATA_FLAGS_WAS_OVERFLOW 0
+#endif
+#ifndef IRDATA_FLAGS_PARITY_FAILED
+#define IRDATA_FLAGS_PARITY_FAILED 0
+#endif
+
 // --- REMOTE CODES ---
 // These hex codes match the specific remote control being used
 #define CODE_CH_MINUS  0xBA45FF00  
@@ -25,38 +34,145 @@
 #define CODE_PREV  0xBB44FF00
 #define CODE_NEXT  0xBF40FF00
 #define CODE_PAUSE 0xBC43FF00
-#define CODE_LOSE  0xE619FF00
-#define CODE_WIN 0xF20DFF00
+#define CODE_100  0xE619FF00
+#define CODE_200 0xF20DFF00
+#define CODE_EQ 0xF609FF00
 
 void remoteBegin() {
   IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);
   Serial.println("IR: Remote Receiver Listening...");
 }
 
+// Returns true if the raw 32-bit code matches one of our known buttons.
+//
+// Why this exists:
+// NeoPixel .show() temporarily disables interrupts. If an IR frame arrives
+// during that window, IRremote can sometimes decode a *partial* / corrupted
+// frame. Those corrupted values should be ignored (not treated as real input).
+static inline bool isKnownRemoteCode(uint32_t code) {
+  switch (code) {
+    case CODE_CH_MINUS:
+    case CODE_CH_PLUS:
+    case CODE_0:
+    case CODE_1:
+    case CODE_2:
+    case CODE_3:
+    case CODE_4:
+    case CODE_5:
+    case CODE_7:
+    case CODE_8:
+    case CODE_9:
+    case CODE_PREV:
+    case CODE_NEXT:
+    case CODE_PAUSE:
+    case CODE_100:
+    case CODE_200:
+    case CODE_EQ:
+      return true;
+    default:
+      return false;
+  }
+}
+
+// Set to 1 to print extra information about rejected / noisy IR frames.
+#ifndef REMOTE_DEBUG
+#define REMOTE_DEBUG 0
+#endif
+
 void readRemote() {
   // 1. Is there a signal?
   if (!IrReceiver.decode()) return;
 
-  delay(100); // Wait 0.1s for the IR signal to fully settle
-  
-  // 2. Handle repeat signals: if it's a repeat and we have no previous
-  // valid code, ignore. Otherwise treat the repeat as the same code
-  // as the last successfully decoded code. This helps when short
-  // blocking operations (like NeoPixel.show()) corrupt the first frame
-  // but the remote will send repeat frames while the button is held.
-  static uint32_t lastRemoteCode = 0;
+  // 2) Robust decode filtering + debounce.
+  //
+  // Problem we are fixing:
+  // - NeoPixel.show() disables interrupts.
+  // - If an IR packet arrives during that time, IRremote can decode garbage.
+  // - Garbage was being treated as a real "lastRemoteCode", which then caused:
+  //     * "Unknown Key" spam
+  //     * needing multiple presses to switch modes
+  //
+  // Fix:
+  // - Only accept frames that look valid AND match a known button code.
+  // - Never overwrite "lastGoodCode" with unknown/corrupted values.
+  // - Debounce ONLY repeated identical codes; different codes should be
+  //   accepted immediately (so switching rounds feels responsive).
+  static uint32_t lastGoodCode = 0;
+  static uint32_t lastProcessedCode = 0;
+  static unsigned long lastProcessedTime = 0;
+
+  const unsigned long SAME_CODE_DEBOUNCE_MS = 120;
+  unsigned long now = millis();
+
   bool isRepeat = (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT);
-  uint32_t code;
+  uint32_t code = 0;
+
   if (isRepeat) {
-    if (lastRemoteCode == 0) {
+    // Repeat frames do not contain a full 32-bit code. Use the last known-good one.
+    if (lastGoodCode == 0) {
       IrReceiver.resume();
       return;
     }
-    code = lastRemoteCode;
+    code = lastGoodCode;
   } else {
+    // Reject clearly-bad frames.
+    // (These fields/macros are provided by IRremote v4.x)
+    if (IrReceiver.decodedIRData.protocol == UNKNOWN) {
+#if REMOTE_DEBUG
+      Serial.println("IR: Ignored UNKNOWN protocol");
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    if (IrReceiver.decodedIRData.numberOfBits < 32) {
+#if REMOTE_DEBUG
+      Serial.print("IR: Ignored short frame bits=");
+      Serial.println(IrReceiver.decodedIRData.numberOfBits);
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    // Parity/overflow flags indicate corrupt data.
+    if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_WAS_OVERFLOW) {
+#if REMOTE_DEBUG
+      Serial.println("IR: Ignored overflow frame");
+#endif
+      IrReceiver.resume();
+      return;
+    }
+    if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_PARITY_FAILED) {
+#if REMOTE_DEBUG
+      Serial.println("IR: Ignored parity-failed frame");
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
     code = IrReceiver.decodedIRData.decodedRawData;
-    lastRemoteCode = code;
+
+    // Only accept codes we recognize. This is the key part that stops
+    // corrupted partial frames from poisoning our input state.
+    if (!isKnownRemoteCode(code)) {
+#if REMOTE_DEBUG
+      Serial.print("IR: Ignored unknown code 0x");
+      Serial.println(code, HEX);
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    lastGoodCode = code;
   }
+
+  // Debounce only repeats of the *same* code.
+  if (code == lastProcessedCode && (now - lastProcessedTime) < SAME_CODE_DEBOUNCE_MS) {
+    IrReceiver.resume();
+    return;
+  }
+  lastProcessedCode = code;
+  lastProcessedTime = now;
   Mode prev = currentMode;
 
   // 3. Map buttons to Game Modes
@@ -111,7 +227,7 @@ void readRemote() {
         Serial.println("Fast flicker armed: press selector(s) to begin VERY fast quadrant flicker");
       }
       break;
-    case CODE_LOSE:
+    case CODE_100:
       if (currentMode == MODE_R2) {
         int idx = Q_BOTTOM_RIGHT;
         // Stop any flicker/steady on other quadrants so only bottom-right will run the lose sequence
@@ -145,7 +261,7 @@ void readRemote() {
         p = xyToIndex(12, 14);
         if (strips[idx].getPixelColor(p) == whiteCol) strips[idx].setPixelColor(p, brownCol);
         strips[idx].show();
-        Serial.println("CODE_LOSE: Bottom-right lose-sequence started (10x @50ms)");
+        Serial.println("CODE_100: Bottom-right lose-sequence started (10x @50ms)");
       }
       break;
     // When CODE_8 has armed flicker, these keys choose the quadrant to flicker
@@ -332,9 +448,22 @@ void readRemote() {
         }
       }
       break;
+
+    case CODE_EQ:
+      Serial.println("EQ button pressed");
+      break;
+
+    case CODE_200:
+      // Reserved for future use.
+      Serial.println("200 button pressed");
+      break;
+
     default:
-      Serial.print("Unknown Key: 0x");
+      // Should be rare because we filter unknown codes before this switch.
+#if REMOTE_DEBUG
+      Serial.print("IR: Unmapped known code 0x");
       Serial.println(code, HEX);
+#endif
       break;
   }
 

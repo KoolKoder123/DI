@@ -4,7 +4,7 @@
 // Variable to track the color wheel position
 uint16_t introHue = 0;
 
-void introUpdate() {
+static inline void introUpdate() {
   // 1. LOGIC: Spin the color wheel FASTER
   // We increased this from 500 to 3000.
   // Bigger number = Bigger jumps around the color wheel = "Faster" strobe effect
