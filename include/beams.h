@@ -2,7 +2,7 @@
 #include "config.h"
 
 // Memory to remember if the beam was broken last time we checked
-bool beamLast[4] = {false, false, false, false};
+static bool beamLast[4] = {false, false, false, false};
 
 static inline void beamsBegin() {
   for (int i = 0; i < 4; i++) {

@@ -3,7 +3,7 @@
 #include "config.h"
 
 // Define the 4 LED strips
-Adafruit_NeoPixel strips[4] = {
+static Adafruit_NeoPixel strips[4] = {
   Adafruit_NeoPixel(LEDS_PER_QUAD, LED_PINS[0], NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel(LEDS_PER_QUAD, LED_PINS[1], NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel(LEDS_PER_QUAD, LED_PINS[2], NEO_GRB + NEO_KHZ800),

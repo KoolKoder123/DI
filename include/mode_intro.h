@@ -1,19 +1,21 @@
 #pragma once
+#include "leds.h"
 
-/*
-  mode_intro.h
+// MODE_INTRO: fast rainbow strobe.
+static uint16_t introHue = 0;
 
-  INTRO mode behavior:
-  - Run a fast rainbow strobe on all quadrants.
-  - IMPORTANT: Only update LEDs when the IR receiver is idle.
-*/
+static inline void enterIntro() {
+  Serial.println("Mode: INTRO");
+}
 
-#include <IRremote.hpp>
+static inline void runIntro(bool canShow) {
+  if (!canShow) return;
 
-#include "patterns.h"
+  // Jump around the color wheel fast to create a strobe-like rainbow.
+  introHue += 3000;
 
-static inline void runIntroMode() {
-  if (IrReceiver.isIdle()) {
-    introUpdate();
+  for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+    strips[q].rainbow(introHue);
+    strips[q].show();
   }
 }

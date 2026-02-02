@@ -1,19 +1,20 @@
 #pragma once
+#include "leds.h"
 
-/*
-  mode_finale.h
+// MODE_FINALE: slow, majestic rainbow.
+static uint16_t finaleHue = 0;
 
-  FINALE mode behavior:
-  - Run a slower rainbow animation.
-  - Only update LEDs when the IR receiver is idle.
-*/
+static inline void enterFinale() {
+  Serial.println("Mode: FINALE");
+}
 
-#include <IRremote.hpp>
+static inline void runFinale(bool canShow) {
+  if (!canShow) return;
 
-#include "patterns.h"
+  finaleHue += 100;
 
-static inline void runFinaleMode() {
-  if (IrReceiver.isIdle()) {
-    finaleUpdate();
+  for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+    strips[q].rainbow(finaleHue);
+    strips[q].show();
   }
 }
