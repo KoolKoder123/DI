@@ -1,32 +1,32 @@
 #pragma once
 #include <Arduino.h>
 
-// -----------------------------
-// Hardware configuration
-// -----------------------------
+// --- HARDWARE CONFIGURATION ---
 #define NUM_STRIPS_CONNECTED 4   // How many quadrants are physically wired up right now?
 #define QUAD_ROWS 18             // Height of the usable (visible) matrix
 #define QUAD_COLS 18             // Width of the usable (visible) matrix
 
-// Physical strip layout: the strip is routed in a 19x19 physical grid,
-// but one LED per row is used for the serpentine "turn" and is not part
-// of the visible 18x18 matrix.
-#define PHYS_ROWS (QUAD_ROWS + 1)
-#define PHYS_COLS (QUAD_COLS + 1)
+// Physical strip layout: the strip is routed in a 19x19 physical grid
+// but one LED per row is consumed by the serpentine turn and should
+// remain unused by the visible 18x18 matrix. Keep the usable
+// dimensions in `QUAD_*` and expose the physical dimensions below.
+#define PHYS_ROWS (QUAD_ROWS+1)       // Physical rows on the strip routing
+#define PHYS_COLS (QUAD_COLS+1)       // Physical cols on the strip routing
 
 // Number of LEDs per physical quadrant (what the strip actually has)
 #define LEDS_PER_QUAD (PHYS_ROWS * PHYS_COLS)
 
-#define BRIGHTNESS 50            // 0 (off) to 255 (very bright)
+#define BRIGHTNESS 50            // 0 (off) to 255 (blindingly bright)
 
-// -----------------------------
-// Pins
-// -----------------------------
-static const uint8_t LED_PINS[4]  = {8, 9, 6, 7};   // Data pins for each quadrant strip
-static const uint8_t BEAM_PINS[4] = {2, 3, 4, 5};   // Beam-break sensor pins
-#define IR_RECEIVER_PIN 11                         // IR receiver pin
+// --- PINS ---
+// Digital pins for the LED Data wires
+const uint8_t LED_PINS[4]  = {8, 9, 6, 7};
+// Digital pins for the IR Beam Break sensors
+const uint8_t BEAM_PINS[4] = {2, 3, 4, 5};
+// Pin for the IR Remote Receiver
+#define IR_RECEIVER_PIN 11
 
-// Contestant Mapping to Quadrants
+//Contestant Mapping to Quadrants
 enum ContestantQuadrantMapping {
   QUEEN = 0,
   DOCTOR = 1,
@@ -41,52 +41,19 @@ enum ContestantQuadrantMapping {
 #define Q_BOTTOM_RIGHT 2
 #define Q_BOTTOM_LEFT 3
 
-// -----------------------------
-// Game state machine (Modes)
-// -----------------------------
-// Mode tells the Arduino "what rules to follow right now".
-// We also use some sub-modes as one-shot commands inside a round.
+// --- GAME STATES ---
+// The "State Machine" - tells the Arduino which rules to follow right now
 enum Mode {
-  // Top-level modes
   MODE_OFF,
   MODE_INTRO,
   MODE_R1,
   MODE_R2,
   MODE_R3,
   MODE_R4,
-  MODE_FINALE,
-
-  // --- Round 2 sub-modes (armed states) ---
-  MODE_R2_STEADY_ARMED,
-  MODE_R2_FLICKER_ARMED,
-  MODE_R2_FLICKER_FAST_ARMED,
-
-  // --- Round 2 one-shot actions (selected quadrant) ---
-  MODE_R2_STEADY_Q_TOP_LEFT,
-  MODE_R2_STEADY_Q_TOP_RIGHT,
-  MODE_R2_STEADY_Q_BOTTOM_RIGHT,
-  MODE_R2_STEADY_Q_BOTTOM_LEFT,
-
-  MODE_R2_FLICKER_Q_TOP_LEFT,
-  MODE_R2_FLICKER_Q_TOP_RIGHT,
-  MODE_R2_FLICKER_Q_BOTTOM_RIGHT,
-  MODE_R2_FLICKER_Q_BOTTOM_LEFT,
-
-  MODE_R2_FLICKER_FAST_Q_TOP_LEFT,
-  MODE_R2_FLICKER_FAST_Q_TOP_RIGHT,
-  MODE_R2_FLICKER_FAST_Q_BOTTOM_RIGHT,
-  MODE_R2_FLICKER_FAST_Q_BOTTOM_LEFT,
-
-  // --- Round 2 one-shot commands ---
-  MODE_R2_LOCK_BOTTOM_LEFT,
-  MODE_R2_TRIGGER_LOSE_SEQUENCE,
-
-  // --- Round 3 one-shot commands ---
-  MODE_R3_STEP_GREEN_TO_BLUE,
-  MODE_R3_STEP_BLUE_TO_GREEN
+  MODE_FINALE
 };
 
-// Convert Mode enum value to a human-readable string (for Serial debug).
+// Convert Mode enum value to human-readable string
 inline const char* modeToString(Mode m) {
   switch (m) {
     case MODE_OFF: return "MODE_OFF";
@@ -96,77 +63,61 @@ inline const char* modeToString(Mode m) {
     case MODE_R3: return "MODE_R3";
     case MODE_R4: return "MODE_R4";
     case MODE_FINALE: return "MODE_FINALE";
-
-    case MODE_R2_STEADY_ARMED: return "MODE_R2_STEADY_ARMED";
-    case MODE_R2_FLICKER_ARMED: return "MODE_R2_FLICKER_ARMED";
-    case MODE_R2_FLICKER_FAST_ARMED: return "MODE_R2_FLICKER_FAST_ARMED";
-
-    case MODE_R2_STEADY_Q_TOP_LEFT: return "MODE_R2_STEADY_Q_TOP_LEFT";
-    case MODE_R2_STEADY_Q_TOP_RIGHT: return "MODE_R2_STEADY_Q_TOP_RIGHT";
-    case MODE_R2_STEADY_Q_BOTTOM_RIGHT: return "MODE_R2_STEADY_Q_BOTTOM_RIGHT";
-    case MODE_R2_STEADY_Q_BOTTOM_LEFT: return "MODE_R2_STEADY_Q_BOTTOM_LEFT";
-
-    case MODE_R2_FLICKER_Q_TOP_LEFT: return "MODE_R2_FLICKER_Q_TOP_LEFT";
-    case MODE_R2_FLICKER_Q_TOP_RIGHT: return "MODE_R2_FLICKER_Q_TOP_RIGHT";
-    case MODE_R2_FLICKER_Q_BOTTOM_RIGHT: return "MODE_R2_FLICKER_Q_BOTTOM_RIGHT";
-    case MODE_R2_FLICKER_Q_BOTTOM_LEFT: return "MODE_R2_FLICKER_Q_BOTTOM_LEFT";
-
-    case MODE_R2_FLICKER_FAST_Q_TOP_LEFT: return "MODE_R2_FLICKER_FAST_Q_TOP_LEFT";
-    case MODE_R2_FLICKER_FAST_Q_TOP_RIGHT: return "MODE_R2_FLICKER_FAST_Q_TOP_RIGHT";
-    case MODE_R2_FLICKER_FAST_Q_BOTTOM_RIGHT: return "MODE_R2_FLICKER_FAST_Q_BOTTOM_RIGHT";
-    case MODE_R2_FLICKER_FAST_Q_BOTTOM_LEFT: return "MODE_R2_FLICKER_FAST_Q_BOTTOM_LEFT";
-
-    case MODE_R2_LOCK_BOTTOM_LEFT: return "MODE_R2_LOCK_BOTTOM_LEFT";
-    case MODE_R2_TRIGGER_LOSE_SEQUENCE: return "MODE_R2_TRIGGER_LOSE_SEQUENCE";
-
-    case MODE_R3_STEP_GREEN_TO_BLUE: return "MODE_R3_STEP_GREEN_TO_BLUE";
-    case MODE_R3_STEP_BLUE_TO_GREEN: return "MODE_R3_STEP_BLUE_TO_GREEN";
-
     default: return "UNKNOWN_MODE";
   }
 }
 
-// Helper functions to group sub-modes into their top-level mode.
-inline bool isRound2Mode(Mode m) {
-  switch (m) {
-    case MODE_R2:
-    case MODE_R2_STEADY_ARMED:
-    case MODE_R2_FLICKER_ARMED:
-    case MODE_R2_FLICKER_FAST_ARMED:
-    case MODE_R2_STEADY_Q_TOP_LEFT:
-    case MODE_R2_STEADY_Q_TOP_RIGHT:
-    case MODE_R2_STEADY_Q_BOTTOM_RIGHT:
-    case MODE_R2_STEADY_Q_BOTTOM_LEFT:
-    case MODE_R2_FLICKER_Q_TOP_LEFT:
-    case MODE_R2_FLICKER_Q_TOP_RIGHT:
-    case MODE_R2_FLICKER_Q_BOTTOM_RIGHT:
-    case MODE_R2_FLICKER_Q_BOTTOM_LEFT:
-    case MODE_R2_FLICKER_FAST_Q_TOP_LEFT:
-    case MODE_R2_FLICKER_FAST_Q_TOP_RIGHT:
-    case MODE_R2_FLICKER_FAST_Q_BOTTOM_RIGHT:
-    case MODE_R2_FLICKER_FAST_Q_BOTTOM_LEFT:
-    case MODE_R2_LOCK_BOTTOM_LEFT:
-    case MODE_R2_TRIGGER_LOSE_SEQUENCE:
-      return true;
-    default:
-      return false;
-  }
-}
+// Overload accepting integer values (casts to Mode)
+inline const char* modeToString(int m) { return modeToString(static_cast<Mode>(m)); }
 
-inline bool isRound3Mode(Mode m) {
-  switch (m) {
-    case MODE_R3:
-    case MODE_R3_STEP_GREEN_TO_BLUE:
-    case MODE_R3_STEP_BLUE_TO_GREEN:
-      return true;
-    default:
-      return false;
-  }
-}
+// Global variable to track the current state
+extern Mode currentMode;
 
-// Returns the "top-level" mode for a given mode (sub-modes collapse to their round).
-inline Mode topLevelMode(Mode m) {
-  if (isRound2Mode(m)) return MODE_R2;
-  if (isRound3Mode(m)) return MODE_R3;
-  return m;
-}
+// Flickering variables for bear face (per-quadrant)
+extern bool flickerActive[NUM_STRIPS_CONNECTED];
+extern unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED];
+extern bool bearOnPerQuad[NUM_STRIPS_CONNECTED];
+// Per-quadrant steady-on flags (set by CODE_7 + selector or CODE_2 lock)
+extern bool steadyActive[NUM_STRIPS_CONNECTED];
+// Armed state: CODE_8 arms flicker; CODE_PREV triggers it for a quadrant
+extern bool flickerArmed;
+// When true CODE_9 armed: select quadrants to flicker at a faster rate
+extern bool flickerFastArmed;
+// Per-quadrant marker for VERY fast flicker (set by CODE_9 selection)
+extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
+// Per-quadrant fixed-lose flicker flag (activated by CODE_100)
+extern bool flickerLosePerQuad[NUM_STRIPS_CONNECTED];
+// (No single-target quadrant variable; per-quadrant arrays are used)
+// MODE_R3 state: which columns in top-left have been turned white
+extern bool topLeftColumnsWhite[QUAD_COLS];
+// MODE_R3 state: which columns in top-right are white (true) or yellow (false)
+extern bool topRightColumnsWhite[QUAD_COLS];
+// MODE_R3: per-column color state: 0 = BLUE, 1 = GREEN
+extern uint8_t topLeftColumnColor[QUAD_COLS];
+extern uint8_t topRightColumnColor[QUAD_COLS];
+// Random flash arrays (defined in src/main.cpp)
+extern bool randomFlashActive[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
+extern uint32_t randomFlashSavedColor[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
+extern unsigned long randomFlashEndTime[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
+// Lose sequence state (defined in src/main.cpp)
+extern bool loseSequenceActive[NUM_STRIPS_CONNECTED];
+extern int loseSequenceCount[NUM_STRIPS_CONNECTED];
+extern unsigned long loseSequenceNextToggle[NUM_STRIPS_CONNECTED];
+// Armed state: CODE_7 arms a steady-on action for PREV to trigger
+extern bool steadyArmed;
+// When true the bottom-left quadrant stays bright red for the duration of MODE_R2
+extern bool bottomLeftLocked;
+
+// --- One-button "lose" actions (CODE_EQ) ---
+// Round 1: draw a red X over the bottom-left jar.
+extern bool round1BottomLeftEliminated;
+
+// Round 2: trigger the bottom-right lose sequence (same behavior as old CODE_100).
+extern bool round2LoseSequenceRequested;
+
+// Round 3: reset the top quadrants and start blinking them.
+extern bool round3ResetAndBlinkRequested;
+extern bool round3BlinkActive;
+
+// Round 4: mark eliminated quadrants (draw red X overlay).
+extern bool round4Eliminated[NUM_STRIPS_CONNECTED];

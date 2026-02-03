@@ -1,47 +1,54 @@
 #pragma once
 
 // Increase tolerance for IR mark/space matching to allow more timing jitter.
+// This overrides the library default (25%) if not already defined.
 #ifndef TOLERANCE_FOR_DECODERS_MARK_OR_SPACE_MATCHING_PERCENT
 #define TOLERANCE_FOR_DECODERS_MARK_OR_SPACE_MATCHING_PERCENT 40
 #endif
 
 #include <IRremote.hpp>
 #include "config.h"
-#include "game_state.h"
 
-// -----------------------------
-// Remote button codes (NEC)
-// -----------------------------
-#define CODE_CH_MINUS  0xBA45FF00
+// Some IRremote flag macros differ slightly between versions.
+// Provide safe fallbacks so this project stays buildable.
+#ifndef IRDATA_FLAGS_WAS_OVERFLOW
+#define IRDATA_FLAGS_WAS_OVERFLOW 0
+#endif
+#ifndef IRDATA_FLAGS_PARITY_FAILED
+#define IRDATA_FLAGS_PARITY_FAILED 0
+#endif
+
+// --- REMOTE CODES ---
+// These hex codes match the specific remote control being used
+#define CODE_CH_MINUS  0xBA45FF00  
 #define CODE_CH_PLUS   0xB847FF00
-#define CODE_0         0xE916FF00
-#define CODE_1         0xF30CFF00
-#define CODE_2         0xE718FF00
-#define CODE_3         0xA15EFF00
-#define CODE_4         0xF708FF00
-#define CODE_5         0xE31CFF00
-#define CODE_7         0xBD42FF00
-#define CODE_8         0xAD52FF00
-#define CODE_9         0xB54AFF00
-#define CODE_PREV      0xBB44FF00
-#define CODE_NEXT      0xBF40FF00
-#define CODE_PAUSE     0xBC43FF00
-#define CODE_LOSE      0xE619FF00
-#define CODE_WIN       0xF20DFF00
-#define CODE_EQ        0xF609FF00
+#define CODE_0  0xE916FF00
+#define CODE_1  0xF30CFF00
+#define CODE_2  0xE718FF00
+#define CODE_3  0xA15EFF00
+#define CODE_4  0xF708FF00
+#define CODE_5  0xE31CFF00
+#define CODE_7  0xBD42FF00
+#define CODE_8  0xAD52FF00
+#define CODE_9  0xB54AFF00
+#define CODE_PREV  0xBB44FF00
+#define CODE_NEXT  0xBF40FF00
+#define CODE_PAUSE 0xBC43FF00
+#define CODE_100  0xE619FF00
+#define CODE_200 0xF20DFF00
+#define CODE_EQ 0xF609FF00
 
-// Turn on to print raw codes to Serial.
-#define REMOTE_DEBUG 0
-
-static inline void remoteBegin() {
+void remoteBegin() {
   IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);
-  Serial.println("IR: Receiver ready");
+  Serial.println("IR: Remote Receiver Listening...");
 }
 
-static inline bool remoteIsIdle() {
-  return IrReceiver.isIdle();
-}
-
+// Returns true if the raw 32-bit code matches one of our known buttons.
+//
+// Why this exists:
+// NeoPixel .show() temporarily disables interrupts. If an IR frame arrives
+// during that window, IRremote can sometimes decode a *partial* / corrupted
+// frame. Those corrupted values should be ignored (not treated as real input).
 static inline bool isKnownRemoteCode(uint32_t code) {
   switch (code) {
     case CODE_CH_MINUS:
@@ -58,8 +65,8 @@ static inline bool isKnownRemoteCode(uint32_t code) {
     case CODE_PREV:
     case CODE_NEXT:
     case CODE_PAUSE:
-    case CODE_LOSE:
-    case CODE_WIN:
+    case CODE_100:
+    case CODE_200:
     case CODE_EQ:
       return true;
     default:
@@ -67,160 +74,411 @@ static inline bool isKnownRemoteCode(uint32_t code) {
   }
 }
 
-static inline void setModeIfDifferent(Mode m) {
-  if (currentMode == m) return;
-  currentMode = m;
-}
+// Set to 1 to print extra information about rejected / noisy IR frames.
+#ifndef REMOTE_DEBUG
+#define REMOTE_DEBUG 0
+#endif
 
-static inline void readRemote() {
+void readRemote() {
+  // 1. Is there a signal?
   if (!IrReceiver.decode()) return;
 
-  uint16_t flags = IrReceiver.decodedIRData.flags;
+  // 2) Robust decode filtering + debounce.
+  //
+  // Problem we are fixing:
+  // - NeoPixel.show() disables interrupts.
+  // - If an IR packet arrives during that time, IRremote can decode garbage.
+  // - Garbage was being treated as a real "lastRemoteCode", which then caused:
+  //     * "Unknown Key" spam
+  //     * needing multiple presses to switch modes
+  //
+  // Fix:
+  // - Only accept frames that look valid AND match a known button code.
+  // - Never overwrite "lastGoodCode" with unknown/corrupted values.
+  // - Debounce ONLY repeated identical codes; different codes should be
+  //   accepted immediately (so switching rounds feels responsive).
+  static uint32_t lastGoodCode = 0;
+  static uint32_t lastProcessedCode = 0;
+  static unsigned long lastProcessedTime = 0;
 
-  // If the library reports a repeat frame, ignore it.
-  // (We want one action per press, not an auto-repeat.)
-#ifdef IRDATA_FLAGS_IS_REPEAT
-  if (flags & IRDATA_FLAGS_IS_REPEAT) {
-    IrReceiver.resume();
-    return;
-  }
-#endif
-
-  // Ignore overflow / parity failures when those flags exist.
-#ifdef IRDATA_FLAGS_WAS_OVERFLOW
-  if (flags & IRDATA_FLAGS_WAS_OVERFLOW) {
-    IrReceiver.resume();
-    return;
-  }
-#endif
-
-#ifdef IRDATA_FLAGS_PARITY_FAILED
-  if (flags & IRDATA_FLAGS_PARITY_FAILED) {
-    IrReceiver.resume();
-    return;
-  }
-#endif
-
-  uint32_t code = IrReceiver.decodedIRData.decodedRawData;
-
-  // Ignore unknown / partial codes.
-  if (!isKnownRemoteCode(code)) {
-#if REMOTE_DEBUG
-    Serial.print("IR: Unknown code 0x");
-    Serial.println(code, HEX);
-#endif
-    IrReceiver.resume();
-    return;
-  }
-
-  // Simple debounce: ignore the same code if it happens too soon.
-  static uint32_t lastCode = 0;
-  static unsigned long lastCodeTime = 0;
+  const unsigned long SAME_CODE_DEBOUNCE_MS = 120;
   unsigned long now = millis();
-  if (code == lastCode && (now - lastCodeTime) < 120) {
+
+  bool isRepeat = (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_IS_REPEAT);
+  uint32_t code = 0;
+
+  if (isRepeat) {
+    // Repeat frames do not contain a full 32-bit code. Use the last known-good one.
+    if (lastGoodCode == 0) {
+      IrReceiver.resume();
+      return;
+    }
+    code = lastGoodCode;
+  } else {
+    // Reject clearly-bad frames.
+    // (These fields/macros are provided by IRremote v4.x)
+    if (IrReceiver.decodedIRData.protocol == UNKNOWN) {
+#if REMOTE_DEBUG
+      Serial.println("IR: Ignored UNKNOWN protocol");
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    if (IrReceiver.decodedIRData.numberOfBits < 32) {
+#if REMOTE_DEBUG
+      Serial.print("IR: Ignored short frame bits=");
+      Serial.println(IrReceiver.decodedIRData.numberOfBits);
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    // Parity/overflow flags indicate corrupt data.
+    if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_WAS_OVERFLOW) {
+#if REMOTE_DEBUG
+      Serial.println("IR: Ignored overflow frame");
+#endif
+      IrReceiver.resume();
+      return;
+    }
+    if (IrReceiver.decodedIRData.flags & IRDATA_FLAGS_PARITY_FAILED) {
+#if REMOTE_DEBUG
+      Serial.println("IR: Ignored parity-failed frame");
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    code = IrReceiver.decodedIRData.decodedRawData;
+
+    // Only accept codes we recognize. This is the key part that stops
+    // corrupted partial frames from poisoning our input state.
+    if (!isKnownRemoteCode(code)) {
+#if REMOTE_DEBUG
+      Serial.print("IR: Ignored unknown code 0x");
+      Serial.println(code, HEX);
+#endif
+      IrReceiver.resume();
+      return;
+    }
+
+    lastGoodCode = code;
+  }
+
+  // Debounce only repeats of the *same* code.
+  if (code == lastProcessedCode && (now - lastProcessedTime) < SAME_CODE_DEBOUNCE_MS) {
     IrReceiver.resume();
     return;
   }
-  lastCode = code;
-  lastCodeTime = now;
+  lastProcessedCode = code;
+  lastProcessedTime = now;
+  Mode prev = currentMode;
 
-#if REMOTE_DEBUG
-  Serial.print("IR: 0x");
-  Serial.println(code, HEX);
-#endif
-
-  // Map button presses to Modes.
+  // 3. Map buttons to Game Modes
   switch (code) {
-    case CODE_CH_MINUS:
-      setModeIfDifferent(MODE_INTRO);
-      break;
-
-    case CODE_CH_PLUS:
-      setModeIfDifferent(MODE_FINALE);
-      break;
-
-    case CODE_0:
-      setModeIfDifferent(MODE_OFF);
-      break;
-
-    case CODE_1:
-      setModeIfDifferent(MODE_R1);
-      break;
-
+    case CODE_CH_MINUS: currentMode = MODE_INTRO;  break;
+    case CODE_CH_PLUS:  currentMode = MODE_FINALE; break;
+    case CODE_0:        currentMode = MODE_OFF;    break;
+    case CODE_1:        currentMode = MODE_R1;     break;
     case CODE_2:
-      // If already in Round 2, CODE_2 is a one-shot "lock bottom-left" command.
-      if (isRound2Mode(currentMode)) {
-        setModeIfDifferent(MODE_R2_LOCK_BOTTOM_LEFT);
+      // If already in MODE_R2, use CODE_2 to lock bottom-left quadrant bright red.
+      if (currentMode == MODE_R2) {
+        bottomLeftLocked = true;
+        steadyActive[Q_BOTTOM_LEFT] = true;
+        drawRedX(Q_BOTTOM_LEFT);
+        Serial.println("Bottom-left quadrant locked bright red (X)");
       } else {
-        setModeIfDifferent(MODE_R2);
+        currentMode = MODE_R2;
       }
       break;
-
-    case CODE_3:
-      setModeIfDifferent(MODE_R3);
-      break;
-
-    case CODE_4:
-      setModeIfDifferent(MODE_R4);
-      break;
-
-    case CODE_5:
-      setModeIfDifferent(MODE_FINALE);
-      break;
-
+    case CODE_3:        currentMode = MODE_R3;     break;
+    case CODE_4:        currentMode = MODE_R4;     break;
+    case CODE_5:        currentMode = MODE_FINALE; break;
     case CODE_7:
-      if (isRound2Mode(currentMode)) setModeIfDifferent(MODE_R2_STEADY_ARMED);
+      if (currentMode == MODE_R2) {
+        // Arm a steady-on action: wait for selectors to make quadrants steady.
+        // Disable flicker-armed so subsequent selector presses apply steady, not flicker.
+        steadyArmed = true;
+        flickerArmed = false;
+        // Also disable FAST-flicker arm so selectors will apply steady.
+        flickerFastArmed = false;
+        Serial.println("Steady armed: press selector(s) to set quadrant(s) steady");
+      }
       break;
-
     case CODE_8:
-      if (isRound2Mode(currentMode)) setModeIfDifferent(MODE_R2_FLICKER_ARMED);
+      if (currentMode == MODE_R2) {
+        // Arm the flicker; do not start immediately. Wait for CODE_PREV.
+        flickerArmed = true;
+        // If user chooses normal flicker, cancel any FAST-flicker arm
+        flickerFastArmed = false;
+        // Also cancel steady-armed so selectors will apply flicker
+        steadyArmed = false;
+        Serial.println("Flicker armed: press PREV to begin quadrant flicker");
+      }
       break;
-
     case CODE_9:
-      if (isRound2Mode(currentMode)) setModeIfDifferent(MODE_R2_FLICKER_FAST_ARMED);
+      if (currentMode == MODE_R2) {
+        // Arm the FAST flicker (shorter interval)
+        flickerFastArmed = true;
+        // Cancel other armed states so selectors trigger FAST-flicker
+        flickerArmed = false;
+        steadyArmed = false;
+        Serial.println("Fast flicker armed: press selector(s) to begin VERY fast quadrant flicker");
+      }
       break;
-
-    case CODE_LOSE:
-      if (isRound2Mode(currentMode)) setModeIfDifferent(MODE_R2_TRIGGER_LOSE_SEQUENCE);
+    case CODE_100:
+      // Backward-compatible: CODE_100 triggers the same "lose" behavior as CODE_EQ in Round 2.
+      if (currentMode == MODE_R2) {
+        round2LoseSequenceRequested = true;
+        Serial.println("Round 2: lose sequence requested (bottom-right)");
+      } else {
+        Serial.println("100 button pressed");
+      }
       break;
-
+    // When CODE_8 has armed flicker, these keys choose the quadrant to flicker
     case CODE_NEXT:
-      // Round 3: move one green column to blue.
-      if (isRound3Mode(currentMode)) {
-        setModeIfDifferent(MODE_R3_STEP_GREEN_TO_BLUE);
-        break;
+      if (currentMode == MODE_R3) {
+        // If Round 3 is in its "lose" blinking state, ignore column edits.
+        if (round3BlinkActive) {
+          Serial.println("Round 3: blinking - ignoring NEXT");
+          break;
+        }
+        // MODE_R3: find the very first GREEN column from the left and
+        // convert it to BLUE. Scan the entire top-left (left->right) first,
+        // then scan top-right (left->right) only if none found.
+        int ql = Q_TOP_LEFT;
+        int qr = Q_TOP_RIGHT;
+        uint32_t blue = strips[0].Color(0,0,255);
+        bool converted = false;
+        // Scan top-left fully
+        for (int x = 0; x < QUAD_COLS; x++) {
+          if (topLeftColumnColor[x] == 1) {
+            for (int y = 0; y < QUAD_ROWS; y++) strips[ql].setPixelColor(xyToIndex(x, y), blue);
+            topLeftColumnColor[x] = 0; // now blue
+            // Clear any random flash state for LEDs in this column so
+            // a pending random-flash restore doesn't overwrite the change.
+            for (int y = 0; y < QUAD_ROWS; y++) {
+              uint16_t physIdx = xyToIndex(x, y);
+              int flat = ql * LEDS_PER_QUAD + physIdx;
+              randomFlashActive[flat] = false;
+              randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
+              randomFlashEndTime[flat] = 0;
+            }
+            strips[ql].show();
+            converted = true;
+            break;
+          }
+        }
+        // If nothing converted in top-left, scan top-right
+        if (!converted) {
+          for (int x = 0; x < QUAD_COLS; x++) {
+            if (topRightColumnColor[x] == 1) {
+              for (int y = 0; y < QUAD_ROWS; y++) {
+                uint16_t physIdx = xyToIndex(x, y);
+                strips[qr].setPixelColor(physIdx, blue);
+                int flat = qr * LEDS_PER_QUAD + physIdx;
+                randomFlashActive[flat] = false;
+                randomFlashSavedColor[flat] = strips[qr].getPixelColor(physIdx);
+                randomFlashEndTime[flat] = 0;
+              }
+              topRightColumnColor[x] = 0; // now blue
+              strips[qr].show();
+              break;
+            }
+          }
+        }
+      } else if (currentMode == MODE_R2) {
+        int idx = Q_TOP_RIGHT;
+        if (flickerFastArmed) {
+          // Start VERY fast flickering top-right quadrant (additive)
+          flickerActive[idx] = true;
+          flickerFastPerQuad[idx] = true;
+          bearOnPerQuad[idx] = true;
+          steadyActive[idx] = false; // stop steady if it was steady
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          nextToggleTimePerQuad[idx] = millis() + random(20, 80);
+        } else if (flickerArmed) {
+          // Start flickering top-right quadrant (additive)
+          flickerFastPerQuad[idx] = false;
+          flickerActive[idx] = true;
+          bearOnPerQuad[idx] = true;
+          steadyActive[idx] = false; // stop steady if it was steady
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          nextToggleTimePerQuad[idx] = millis() + random(100, 400);
+        } else if (steadyArmed) {
+          // Make top-right quadrant steady (stop flicker and draw bear)
+          flickerActive[idx] = false;
+          flickerFastPerQuad[idx] = false;
+          steadyActive[idx] = true;
+          bearOnPerQuad[idx] = true;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+        }
       }
-
-      // Round 2: top-right selector (depends on armed state).
-      if (currentMode == MODE_R2_STEADY_ARMED) setModeIfDifferent(MODE_R2_STEADY_Q_TOP_RIGHT);
-      if (currentMode == MODE_R2_FLICKER_ARMED) setModeIfDifferent(MODE_R2_FLICKER_Q_TOP_RIGHT);
-      if (currentMode == MODE_R2_FLICKER_FAST_ARMED) setModeIfDifferent(MODE_R2_FLICKER_FAST_Q_TOP_RIGHT);
       break;
-
-    case CODE_PREV:
-      // Round 3: move one blue column to green.
-      if (isRound3Mode(currentMode)) {
-        setModeIfDifferent(MODE_R3_STEP_BLUE_TO_GREEN);
-        break;
-      }
-
-      // Round 2: top-left selector (depends on armed state).
-      if (currentMode == MODE_R2_STEADY_ARMED) setModeIfDifferent(MODE_R2_STEADY_Q_TOP_LEFT);
-      if (currentMode == MODE_R2_FLICKER_ARMED) setModeIfDifferent(MODE_R2_FLICKER_Q_TOP_LEFT);
-      if (currentMode == MODE_R2_FLICKER_FAST_ARMED) setModeIfDifferent(MODE_R2_FLICKER_FAST_Q_TOP_LEFT);
-      break;
-
     case CODE_PAUSE:
-      // Round 2: bottom-right selector (depends on armed state).
-      if (currentMode == MODE_R2_STEADY_ARMED) setModeIfDifferent(MODE_R2_STEADY_Q_BOTTOM_RIGHT);
-      if (currentMode == MODE_R2_FLICKER_ARMED) setModeIfDifferent(MODE_R2_FLICKER_Q_BOTTOM_RIGHT);
-      if (currentMode == MODE_R2_FLICKER_FAST_ARMED) setModeIfDifferent(MODE_R2_FLICKER_FAST_Q_BOTTOM_RIGHT);
+      if (currentMode == MODE_R2) {
+        int idx = Q_BOTTOM_RIGHT;
+        if (flickerFastArmed) {
+          // Start VERY fast flickering bottom-right quadrant (additive)
+          flickerActive[idx] = true;
+          flickerFastPerQuad[idx] = true;
+          bearOnPerQuad[idx] = true;
+          steadyActive[idx] = false;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          nextToggleTimePerQuad[idx] = millis() + random(20, 80);
+        } else if (flickerArmed) {
+          // Start flickering bottom-right quadrant (additive)
+          flickerFastPerQuad[idx] = false;
+          flickerActive[idx] = true;
+          bearOnPerQuad[idx] = true;
+          steadyActive[idx] = false;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          nextToggleTimePerQuad[idx] = millis() + random(100, 400);
+        } else if (steadyArmed) {
+          // Make bottom-right quadrant steady
+          flickerActive[idx] = false;
+          flickerFastPerQuad[idx] = false;
+          steadyActive[idx] = true;
+          bearOnPerQuad[idx] = true;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+        }
+      }
+      break;
+    
+    case CODE_PREV:
+      if (currentMode == MODE_R3) {
+        // If Round 3 is in its "lose" blinking state, ignore column edits.
+        if (round3BlinkActive) {
+          Serial.println("Round 3: blinking - ignoring PREV");
+          break;
+        }
+        // MODE_R3: find the first BLUE column from the right and convert it to GREEN.
+        // Search top-right first, then top-left. Only convert one column per press.
+        int ql = Q_TOP_LEFT;
+        int qr = Q_TOP_RIGHT;
+        uint32_t green = strips[0].Color(0,255,0);
+        bool converted = false;
+          for (int x = QUAD_COLS - 1; x >= 0; x--) {
+          // Check top-right for BLUE (0)
+          if (topRightColumnColor[x] == 0) {
+            for (int y = 0; y < QUAD_ROWS; y++) {
+              uint16_t physIdx = xyToIndex(x, y);
+              strips[qr].setPixelColor(physIdx, green);
+              int flat = qr * LEDS_PER_QUAD + physIdx;
+              randomFlashActive[flat] = false;
+              randomFlashSavedColor[flat] = strips[qr].getPixelColor(physIdx);
+              randomFlashEndTime[flat] = 0;
+            }
+            topRightColumnColor[x] = 1; // now green
+            strips[qr].show();
+            converted = true;
+            break;
+          }
+        }
+        if (!converted) {
+          for (int x = QUAD_COLS - 1; x >= 0; x--) {
+            if (topLeftColumnColor[x] == 0) {
+              for (int y = 0; y < QUAD_ROWS; y++) {
+                uint16_t physIdx = xyToIndex(x, y);
+                strips[ql].setPixelColor(physIdx, green);
+                int flat = ql * LEDS_PER_QUAD + physIdx;
+                randomFlashActive[flat] = false;
+                randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
+                randomFlashEndTime[flat] = 0;
+              }
+              topLeftColumnColor[x] = 1; // now green
+              strips[ql].show();
+              break;
+            }
+          }
+        }
+      } else if (currentMode == MODE_R2) {
+        int idx = Q_TOP_LEFT;
+        if (flickerFastArmed) {
+          // Start VERY fast flickering top-left quadrant (additive)
+          flickerActive[idx] = true;
+          flickerFastPerQuad[idx] = true;
+          bearOnPerQuad[idx] = true;
+          steadyActive[idx] = false;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          nextToggleTimePerQuad[idx] = millis() + random(20, 80);
+        } else if (flickerArmed) {
+          // Start flickering top-left quadrant (additive)
+          flickerFastPerQuad[idx] = false;
+          flickerActive[idx] = true;
+          bearOnPerQuad[idx] = true;
+          steadyActive[idx] = false;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          nextToggleTimePerQuad[idx] = millis() + random(100, 400);
+        } else if (steadyArmed) {
+          // Make top-left quadrant steady (not flickering)
+          flickerActive[idx] = false;
+          flickerFastPerQuad[idx] = false;
+          steadyActive[idx] = true;
+          bearOnPerQuad[idx] = true;
+          uint32_t bearColor = strips[0].Color(15, 8, 0);
+          drawBearFace(idx, strips[0].Color(255,255,255), bearColor); // top-left steady
+        }
+      }
+      break;
+
+    case CODE_EQ:
+      // CODE_EQ is a "lose" shortcut, and does different things per round.
+      if (currentMode == MODE_R1) {
+        // Round 1: bottom-left loses (red X overlay on current jar).
+        round1BottomLeftEliminated = true;
+        Serial.println("Round 1: bottom-left eliminated (X)");
+      } else if (currentMode == MODE_R2) {
+        // Round 2: trigger the bottom-right lose sequence (ends with red X over bear).
+        round2LoseSequenceRequested = true;
+        Serial.println("Round 2: lose sequence requested (bottom-right)");
+      } else if (currentMode == MODE_R3) {
+        // Round 3: reset the top quadrants and blink them.
+        round3ResetAndBlinkRequested = true;
+        round3BlinkActive = true;
+        Serial.println("Round 3: reset + blink requested (top quadrants)");
+      } else if (currentMode == MODE_R4) {
+        // Round 4: eliminate everyone except bottom-left.
+        for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) round4Eliminated[i] = false;
+        round4Eliminated[Q_TOP_LEFT] = true;
+        round4Eliminated[Q_TOP_RIGHT] = true;
+        round4Eliminated[Q_BOTTOM_RIGHT] = true;
+        round4Eliminated[Q_BOTTOM_LEFT] = false;
+        Serial.println("Round 4: eliminated all but bottom-left (X)");
+      } else {
+        Serial.println("EQ button pressed");
+      }
+      break;
+
+    case CODE_200:
+      // Reserved for future use.
+      Serial.println("200 button pressed");
       break;
 
     default:
-      // Other buttons are currently unused.
+      // Should be rare because we filter unknown codes before this switch.
+#if REMOTE_DEBUG
+      Serial.print("IR: Unmapped known code 0x");
+      Serial.println(code, HEX);
+#endif
       break;
   }
 
+  // 4. Log changes to Serial Monitor for debugging
+  if (currentMode != prev) {
+    Serial.print(">> Mode Switched: ");
+    Serial.println(modeToString(currentMode));
+  }
+
+  // 5. Reset receiver to listen again
   IrReceiver.resume();
 }
