@@ -24,19 +24,19 @@ static bool r4PrevEliminated[NUM_STRIPS_CONNECTED] = {false, false, false, false
 // For now we keep the same "jar" shape as Round 1, but each quadrant uses a
 // different color and we keep this function local to Round 4.
 static inline void getRound4JarColors(uint8_t q, uint32_t* borderColor, uint32_t* fillColor) {
-  // Color choices (picked for high contrast with a red X):
-  // - Bottom-left (winner quadrant in this round's ending): RED
-  // - Top-left: BLUE
-  // - Top-right: GREEN
-  // - Bottom-right: WHITE
+  // Color choices:
+  // - Bottom-left: BRIGHT YELLOW (PURE)
+  // - Top-left: RED
+  // - Top-right: PINK
+  // - Bottom-right: BLUE
   uint8_t br = 0, bg = 0, bb = 0;
   uint8_t fr = 0, fg = 0, fb = 0;
 
   switch (q) {
-    case Q_BOTTOM_LEFT:  br = 255; bg = 0;   bb = 0;   fr = 80;  fg = 0;  fb = 0;  break; // red
-    case Q_TOP_LEFT:     br = 0;   bg = 0;   bb = 255; fr = 0;   fg = 0;  fb = 80; break; // blue
-    case Q_TOP_RIGHT:    br = 0;   bg = 255; bb = 0;   fr = 0;   fg = 80; fb = 0;  break; // green
-    case Q_BOTTOM_RIGHT: br = 255; bg = 255; bb = 255; fr = 80;  fg = 80; fb = 80; break; // white
+    case Q_BOTTOM_LEFT:  br = 255; bg = 255; bb = 0;   fr = 255; fg = 255; fb = 0;  break; // bright yellow
+    case Q_TOP_RIGHT:    br = 255; bg = 105; bb = 180; fr = 80;  fg = 30;  fb = 60; break; // pink
+    case Q_TOP_LEFT:     br = 255; bg = 0;   bb = 0;   fr = 80;  fg = 0;  fb = 0;  break; // red
+    case Q_BOTTOM_RIGHT: br = 0;   bg = 0;   bb = 255; fr = 0;   fg = 0;   fb = 80; break; // blue
     default:             br = 255; bg = 255; bb = 255; fr = 80;  fg = 80; fb = 80; break;
   }
 
