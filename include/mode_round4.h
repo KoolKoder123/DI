@@ -150,6 +150,104 @@ static inline void celebrateWin() {
   }
   
   // TODO: Draw crown
+  uint32_t white = strips[0].Color(160, 160, 160);
+  for(int a = 3; a < 15; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 4), white);
+  }
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(2, 5), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(2, 6), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(15, 5), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(15, 6), white);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(3, 7), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(14, 7), white);
+
+  for(int a = 8; a < 15; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(2, a), white);
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(15, a), white);
+  }
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(3, 15), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(14, 15), white);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(4, 14), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(13, 14), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(4, 13), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(13, 13), white);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(5, 12), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(12, 12), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(5, 11), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(12, 11), white);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(6, 10), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(11, 10), white);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(7, 11), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(7, 12), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(7, 13), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(8, 14), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(7, 16), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(10, 11), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(10, 12), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(10, 13), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(9, 14), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(10, 16), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(7, 15), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(10, 15), white);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(8, 17), white);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(9, 17), white);
+
+  // Fill in crown
+  uint32_t purple = strips[0].Color(75, 0, 75); // Purple color
+  for(int a = 3; a < 15; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 5), purple);
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 6), purple);
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 8), purple);
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 9), purple);
+  }
+
+  for(int a = 4; a < 14; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 7), purple);
+  }
+
+  for(int a = 3; a < 6; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 10), purple);
+  }
+
+  for(int a = 7; a < 11; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 10), purple);
+  }
+
+  for(int a = 12; a < 15; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(a, 10), purple);
+  }
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(3, 11), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(4, 11), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(3, 12), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(4, 12), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(3, 13), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(3, 14), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(14, 14), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(14, 13), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(14, 12), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(14, 11), purple);
+  
+  for(int a = 11; a < 14; a++) {
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(8, a), purple);
+    strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(9, a), purple);
+  }
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(13, 11), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(13, 12), purple);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(8, 16), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(9, 16), purple);
+
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(8, 15), purple);
+  strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(9, 15), purple);
 
   strips[Q_BOTTOM_LEFT].show();
 }

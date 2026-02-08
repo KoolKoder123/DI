@@ -19,7 +19,7 @@ unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED] = {0,0,0,0};
 bool bearOnPerQuad[NUM_STRIPS_CONNECTED] = {true, true, true, true};
 // Arm state used to select which quadrant to start flickering
 bool flickerArmed = false;
-// Fast-arm for CODE_9 selections
+// Fast-arm for CODE_FLICKER_FAST selections
 bool flickerFastArmed = false;
 // Per-quadrant very-fast flicker flags
 bool flickerFastPerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
@@ -34,7 +34,7 @@ bool topRightColumnsWhite[QUAD_COLS];
 // MODE_R3: per-column color state: 0 = BLUE, 1 = GREEN
 uint8_t topLeftColumnColor[QUAD_COLS] = {0};
 uint8_t topRightColumnColor[QUAD_COLS] = {0};
-// New: steady-armed state for CODE_7 -> CODE_QUEEN_RAP_MORE sequence
+// New: steady-armed state for CODE_STEADY -> CODE_QUEEN_RAP_MORE sequence
 bool steadyArmed = false;
 // Bottom-left lock: CODE_R2 makes bottom-left stay bright red during MODE_R2
 bool bottomLeftLocked = false;
@@ -377,7 +377,7 @@ void loop() {
         }
 
         // Choose next toggle interval based on whether this quadrant was
-        // selected for VERY-fast flicker (CODE_9) or normal flicker.
+        // selected for VERY-fast flicker (CODE_FLICKER_FAST) or normal flicker.
         if (flickerLosePerQuad[q]) {
           // Fixed, deterministic very-fast flicker for CODE_R100
           nextToggleTimePerQuad[q] = millis() + 40;

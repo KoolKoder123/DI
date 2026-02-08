@@ -28,9 +28,9 @@
 #define CODE_R3  0xA65988FF
 #define CODE_R4  0x9F6088FF
 #define CODE_5  0xE31CFF00
-#define CODE_7  0xBD42FF00
-#define CODE_8  0xAD52FF00
-#define CODE_9  0xB54AFF00
+#define CODE_STEADY  0xEB1488FF
+#define CODE_FLICKER_SLOW  0xEA1588FF
+#define CODE_FLICKER_FAST  0xAD5288FF
 #define CODE_QUEEN_RAP_MORE  0xAF5088FF
 #define CODE_DOCTOR_RAP_MORE  0xAE5188FF
 #define CODE_PAUSE 0xBC43FF00
@@ -59,9 +59,9 @@ static inline bool isKnownRemoteCode(uint32_t code) {
     case CODE_R3:
     case CODE_R4:
     case CODE_5:
-    case CODE_7:
-    case CODE_8:
-    case CODE_9:
+    case CODE_STEADY:
+    case CODE_FLICKER_SLOW:
+    case CODE_FLICKER_FAST:
     case CODE_QUEEN_RAP_MORE:
     case CODE_DOCTOR_RAP_MORE:
     case CODE_PAUSE:
@@ -195,7 +195,7 @@ void readRemote() {
     case CODE_R3:        currentMode = MODE_R3;     break;
     case CODE_R4:        currentMode = MODE_R4;     break;
     case CODE_5:        currentMode = MODE_FINALE; break;
-    case CODE_7:
+    case CODE_STEADY:
       if (currentMode == MODE_R2) {
         // Arm a steady-on action: wait for selectors to make quadrants steady.
         // Disable flicker-armed so subsequent selector presses apply steady, not flicker.
@@ -206,7 +206,7 @@ void readRemote() {
         Serial.println("Steady armed: press selector(s) to set quadrant(s) steady");
       }
       break;
-    case CODE_8:
+    case CODE_FLICKER_SLOW:
       if (currentMode == MODE_R2) {
         // Arm the flicker; do not start immediately. Wait for CODE_QUEEN_RAP_MORE.
         flickerArmed = true;
@@ -217,7 +217,7 @@ void readRemote() {
         Serial.println("Flicker armed: press PREV to begin quadrant flicker");
       }
       break;
-    case CODE_9:
+    case CODE_FLICKER_FAST:
       if (currentMode == MODE_R2) {
         // Arm the FAST flicker (shorter interval)
         flickerFastArmed = true;
@@ -236,7 +236,7 @@ void readRemote() {
         Serial.println("100 button pressed");
       }
       break;
-    // When CODE_8 has armed flicker, these keys choose the quadrant to flicker
+    // When CODE_FLICKER_SLOW has armed flicker, these keys choose the quadrant to flicker
     case CODE_DOCTOR_RAP_MORE:
       if (currentMode == MODE_R3) {
         // If Round 3 is in its "lose" blinking state, ignore column edits.

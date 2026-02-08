@@ -77,13 +77,13 @@ extern Mode currentMode;
 extern bool flickerActive[NUM_STRIPS_CONNECTED];
 extern unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED];
 extern bool bearOnPerQuad[NUM_STRIPS_CONNECTED];
-// Per-quadrant steady-on flags (set by CODE_7 + selector or CODE_R2 lock)
+// Per-quadrant steady-on flags (set by CODE_STEADY + selector or CODE_R2 lock)
 extern bool steadyActive[NUM_STRIPS_CONNECTED];
-// Armed state: CODE_8 arms flicker; CODE_QUEEN_RAP_MORE triggers it for a quadrant
+// Armed state: CODE_FLICKER_SLOW arms flicker; CODE_QUEEN_RAP_MORE triggers it for a quadrant
 extern bool flickerArmed;
-// When true CODE_9 armed: select quadrants to flicker at a faster rate
+// When true CODE_FLICKER_FAST armed: select quadrants to flicker at a faster rate
 extern bool flickerFastArmed;
-// Per-quadrant marker for VERY fast flicker (set by CODE_9 selection)
+// Per-quadrant marker for VERY fast flicker (set by CODE_FLICKER_FAST selection)
 extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
 // Per-quadrant fixed-lose flicker flag (activated by CODE_R100)
 extern bool flickerLosePerQuad[NUM_STRIPS_CONNECTED];
@@ -103,7 +103,7 @@ extern unsigned long randomFlashEndTime[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
 extern bool loseSequenceActive[NUM_STRIPS_CONNECTED];
 extern int loseSequenceCount[NUM_STRIPS_CONNECTED];
 extern unsigned long loseSequenceNextToggle[NUM_STRIPS_CONNECTED];
-// Armed state: CODE_7 arms a steady-on action for PREV to trigger
+// Armed state: CODE_STEADY arms a steady-on action for PREV to trigger
 extern bool steadyArmed;
 // When true the bottom-left quadrant stays bright red for the duration of MODE_R2
 extern bool bottomLeftLocked;
