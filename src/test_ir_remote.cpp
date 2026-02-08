@@ -5,21 +5,21 @@
 
 // --- BUTTON CODES ---
 // We know CH- is this value:
-#define CODE_CH_MINUS  0xBA45FF00  
-#define CODE_CH_PLUS   0xB847FF00
-#define CODE_RESET  0xFE0188FF
-#define CODE_R1  0xFD0288FF
-#define CODE_R2  0xE718FF00
-#define CODE_R3  0xA15EFF00
-#define CODE_R4  0xF708FF00
+#define CODE_INTRO_PATTERN  0xBA45FF00  
+#define CODE_FINALE   0xB847FF00
+#define CODE_RESET  0xFA0588FF
+#define CODE_R1  0xA85788FF
+#define CODE_R2  0xA75888FF
+#define CODE_R3  0xA65988FF
+#define CODE_R4  0x9F6088FF
 #define CODE_5  0xE31CFF00
 #define CODE_7  0xBD42FF00
 #define CODE_8  0xAD52FF00
 #define CODE_9  0xB54AFF00
-#define CODE_PREV  0xBB44FF00
-#define CODE_NEXT  0xBF40FF00
+#define CODE_QUEEN_RAP_MORE  0xBB44FF00
+#define CODE_DOCTOR_RAP_MORE  0xBF40FF00
 #define CODE_PAUSE 0xBC43FF00
-// CODE_VOL_MIN removed: bottom-left controlled by CODE_2 during MODE_R2
+// CODE_VOL_MIN removed: bottom-left controlled by CODE_R2 during MODE_R2
 
 void setup() {
   Serial.begin(9600);
@@ -40,10 +40,10 @@ void loop() {
       uint32_t received_code = IrReceiver.decodedIRData.decodedRawData;
 
       switch (received_code) {
-        case CODE_CH_MINUS:
+        case CODE_INTRO_PATTERN:
           Serial.println(">> ACTION: CH- Pressed!");
           break;
-        case CODE_CH_PLUS:
+        case CODE_FINALE:
           Serial.println(">> ACTION: CH+ Pressed!");
           break;
         case CODE_RESET:
@@ -73,10 +73,10 @@ void loop() {
         case CODE_9:
           Serial.println(">> ACTION: 9 Pressed!");
           break;
-        case CODE_PREV:
+        case CODE_QUEEN_RAP_MORE:
           Serial.println(">> ACTION: Prev Pressed!");
           break;
-        case CODE_NEXT:
+        case CODE_DOCTOR_RAP_MORE:
           Serial.println(">> ACTION: Next Pressed!");
           break;
         case CODE_PAUSE:

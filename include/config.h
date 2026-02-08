@@ -60,7 +60,7 @@ inline const char* modeToString(Mode m) {
     case MODE_INTRO: return "MODE_INTRO";
     case MODE_R1: return "MODE_R1";
     case MODE_R2: return "MODE_R2";
-    case MODE_R3: return "MODEdebug_R3";
+    case MODE_R3: return "MODE_R3";
     case MODE_R4: return "MODE_R4";
     case MODE_FINALE: return "MODE_FINALE";
     default: return "UNKNOWN_MODE";
@@ -77,15 +77,15 @@ extern Mode currentMode;
 extern bool flickerActive[NUM_STRIPS_CONNECTED];
 extern unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED];
 extern bool bearOnPerQuad[NUM_STRIPS_CONNECTED];
-// Per-quadrant steady-on flags (set by CODE_7 + selector or CODE_2 lock)
+// Per-quadrant steady-on flags (set by CODE_7 + selector or CODE_R2 lock)
 extern bool steadyActive[NUM_STRIPS_CONNECTED];
-// Armed state: CODE_8 arms flicker; CODE_PREV triggers it for a quadrant
+// Armed state: CODE_8 arms flicker; CODE_QUEEN_RAP_MORE triggers it for a quadrant
 extern bool flickerArmed;
 // When true CODE_9 armed: select quadrants to flicker at a faster rate
 extern bool flickerFastArmed;
 // Per-quadrant marker for VERY fast flicker (set by CODE_9 selection)
 extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
-// Per-quadrant fixed-lose flicker flag (activated by CODE_100)
+// Per-quadrant fixed-lose flicker flag (activated by CODE_R100)
 extern bool flickerLosePerQuad[NUM_STRIPS_CONNECTED];
 // (No single-target quadrant variable; per-quadrant arrays are used)
 // MODE_R3 state: which columns in top-left have been turned white
@@ -108,11 +108,11 @@ extern bool steadyArmed;
 // When true the bottom-left quadrant stays bright red for the duration of MODE_R2
 extern bool bottomLeftLocked;
 
-// --- One-button "lose" actions (CODE_EQ) ---
+// --- One-button "lose" actions (CODE_ROUND_FINAL) ---
 // Round 1: draw a red X over the bottom-left jar.
 extern bool round1BottomLeftEliminated;
 
-// Round 2: trigger the bottom-right lose sequence (same behavior as old CODE_100).
+// Round 2: trigger the bottom-right lose sequence (same behavior as old CODE_R100).
 extern bool round2LoseSequenceRequested;
 
 // Round 3: reset the top quadrants and start blinking them.

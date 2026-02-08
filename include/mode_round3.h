@@ -191,19 +191,24 @@ static inline void enterRound3() {
   Serial.println("Round 3: Ready");
 }
 
-static inline void runRound3(bool canShow) {
-  if (!canShow) return;
-
-  // One-shot column moves (triggered by remote)
-  if (currentMode == MODE_R3_STEP_GREEN_TO_BLUE) {
-    r3StepGreenToBlue();
-    currentMode = MODE_R3;
-  } else if (currentMode == MODE_R3_STEP_BLUE_TO_GREEN) {
-    r3StepBlueToGreen();
-    currentMode = MODE_R3;
+// Update active flashes and restore colors when their duration ends.
+static inline void randomFlashUpdate() {
+  bool dirty[NUM_STRIPS_CONNECTED] = {false, false, false, false};
+  unsigned long now = millis();
+  for (int q = Q_TOP_LEFT; q <= Q_TOP_RIGHT; q++) {
+    for (uint16_t physIdx = 0; physIdx < LEDS_PER_QUAD; physIdx++) {
+      int flat = q * LEDS_PER_QUAD + physIdx;
+      if (!randomFlashActive[flat]) continue;
+      if (now >= randomFlashEndTime[flat]) {
+        // Restore saved color
+        strips[q].setPixelColor(physIdx, randomFlashSavedColor[flat]);
+        randomFlashActive[flat] = false;
+        randomFlashSavedColor[flat] = 0;
+        randomFlashEndTime[flat] = 0;
+        dirty[q] = true;
+      }
+    }
   }
-
-  // Random sparkle flashes
-  r3FlashTryStart();
-  r3FlashUpdate();
+  // Push updates for quadrants that changed
+  for (int q = Q_TOP_LEFT; q <= Q_TOP_RIGHT; q++) if (dirty[q]) strips[q].show();
 }

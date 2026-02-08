@@ -20,23 +20,23 @@
 
 // --- REMOTE CODES ---
 // These hex codes match the specific remote control being used
-#define CODE_CH_MINUS  0xBA45FF00  
-#define CODE_CH_PLUS   0xB847FF00
-#define CODE_0  0xE916FF00
-#define CODE_1  0xF30CFF00
-#define CODE_2  0xE718FF00
-#define CODE_3  0xA15EFF00
-#define CODE_4  0xF708FF00
+#define CODE_INTRO_PATTERN  0xFE0188FF  
+#define CODE_FINALE   0x9E6188FF
+#define CODE_RESET  0xFA0588FF
+#define CODE_R1  0xA85788FF
+#define CODE_R2  0xA75888FF
+#define CODE_R3  0xA65988FF
+#define CODE_R4  0x9F6088FF
 #define CODE_5  0xE31CFF00
 #define CODE_7  0xBD42FF00
 #define CODE_8  0xAD52FF00
 #define CODE_9  0xB54AFF00
-#define CODE_PREV  0xBB44FF00
-#define CODE_NEXT  0xBF40FF00
+#define CODE_QUEEN_RAP_MORE  0xAF5088FF
+#define CODE_DOCTOR_RAP_MORE  0xAE5188FF
 #define CODE_PAUSE 0xBC43FF00
-#define CODE_100  0xE619FF00
-#define CODE_200 0xF20DFF00
-#define CODE_EQ 0xF609FF00
+#define CODE_R100  0xE619FF00
+#define CODE_R200 0xF20DFF00
+#define CODE_ROUND_FINAL 0xB84788FF
 
 void remoteBegin() {
   IrReceiver.begin(IR_RECEIVER_PIN, ENABLE_LED_FEEDBACK);
@@ -51,23 +51,23 @@ void remoteBegin() {
 // frame. Those corrupted values should be ignored (not treated as real input).
 static inline bool isKnownRemoteCode(uint32_t code) {
   switch (code) {
-    case CODE_CH_MINUS:
-    case CODE_CH_PLUS:
-    case CODE_0:
-    case CODE_1:
-    case CODE_2:
-    case CODE_3:
-    case CODE_4:
+    case CODE_INTRO_PATTERN:
+    case CODE_FINALE:
+    case CODE_RESET:
+    case CODE_R1:
+    case CODE_R2:
+    case CODE_R3:
+    case CODE_R4:
     case CODE_5:
     case CODE_7:
     case CODE_8:
     case CODE_9:
-    case CODE_PREV:
-    case CODE_NEXT:
+    case CODE_QUEEN_RAP_MORE:
+    case CODE_DOCTOR_RAP_MORE:
     case CODE_PAUSE:
-    case CODE_100:
-    case CODE_200:
-    case CODE_EQ:
+    case CODE_R100:
+    case CODE_R200:
+    case CODE_ROUND_FINAL:
       return true;
     default:
       return false;
@@ -76,7 +76,7 @@ static inline bool isKnownRemoteCode(uint32_t code) {
 
 // Set to 1 to print extra information about rejected / noisy IR frames.
 #ifndef REMOTE_DEBUG
-#define REMOTE_DEBUG 0
+#define REMOTE_DEBUG 1
 #endif
 
 void readRemote() {
@@ -177,12 +177,12 @@ void readRemote() {
 
   // 3. Map buttons to Game Modes
   switch (code) {
-    case CODE_CH_MINUS: currentMode = MODE_INTRO;  break;
-    case CODE_CH_PLUS:  currentMode = MODE_FINALE; break;
-    case CODE_0:        currentMode = MODE_OFF;    break;
-    case CODE_1:        currentMode = MODE_R1;     break;
-    case CODE_2:
-      // If already in MODE_R2, use CODE_2 to lock bottom-left quadrant bright red.
+    case CODE_INTRO_PATTERN: currentMode = MODE_INTRO;  break;
+    case CODE_FINALE:  currentMode = MODE_FINALE; break;
+    case CODE_RESET:        currentMode = MODE_OFF;    break;
+    case CODE_R1:        currentMode = MODE_R1;     break;
+    case CODE_R2:
+      // If already in MODE_R2, use CODE_R2 to lock bottom-left quadrant bright red.
       if (currentMode == MODE_R2) {
         bottomLeftLocked = true;
         steadyActive[Q_BOTTOM_LEFT] = true;
@@ -192,8 +192,8 @@ void readRemote() {
         currentMode = MODE_R2;
       }
       break;
-    case CODE_3:        currentMode = MODE_R3;     break;
-    case CODE_4:        currentMode = MODE_R4;     break;
+    case CODE_R3:        currentMode = MODE_R3;     break;
+    case CODE_R4:        currentMode = MODE_R4;     break;
     case CODE_5:        currentMode = MODE_FINALE; break;
     case CODE_7:
       if (currentMode == MODE_R2) {
@@ -208,7 +208,7 @@ void readRemote() {
       break;
     case CODE_8:
       if (currentMode == MODE_R2) {
-        // Arm the flicker; do not start immediately. Wait for CODE_PREV.
+        // Arm the flicker; do not start immediately. Wait for CODE_QUEEN_RAP_MORE.
         flickerArmed = true;
         // If user chooses normal flicker, cancel any FAST-flicker arm
         flickerFastArmed = false;
@@ -227,8 +227,8 @@ void readRemote() {
         Serial.println("Fast flicker armed: press selector(s) to begin VERY fast quadrant flicker");
       }
       break;
-    case CODE_100:
-      // Backward-compatible: CODE_100 triggers the same "lose" behavior as CODE_EQ in Round 2.
+    case CODE_R100:
+      // Backward-compatible: CODE_R100 triggers the same "lose" behavior as CODE_ROUND_FINAL in Round 2.
       if (currentMode == MODE_R2) {
         round2LoseSequenceRequested = true;
         Serial.println("Round 2: lose sequence requested (bottom-right)");
@@ -237,7 +237,7 @@ void readRemote() {
       }
       break;
     // When CODE_8 has armed flicker, these keys choose the quadrant to flicker
-    case CODE_NEXT:
+    case CODE_DOCTOR_RAP_MORE:
       if (currentMode == MODE_R3) {
         // If Round 3 is in its "lose" blinking state, ignore column edits.
         if (round3BlinkActive) {
@@ -352,7 +352,7 @@ void readRemote() {
       }
       break;
     
-    case CODE_PREV:
+    case CODE_QUEEN_RAP_MORE:
       if (currentMode == MODE_R3) {
         // If Round 3 is in its "lose" blinking state, ignore column edits.
         if (round3BlinkActive) {
@@ -431,8 +431,8 @@ void readRemote() {
       }
       break;
 
-    case CODE_EQ:
-      // CODE_EQ is a "lose" shortcut, and does different things per round.
+    case CODE_ROUND_FINAL:
+      // CODE_ROUND_FINAL is a "lose" shortcut, and does different things per round.
       if (currentMode == MODE_R1) {
         // Round 1: bottom-left loses (red X overlay on current jar).
         round1BottomLeftEliminated = true;
@@ -459,7 +459,7 @@ void readRemote() {
       }
       break;
 
-    case CODE_200:
+    case CODE_R200:
       // Reserved for future use.
       Serial.println("200 button pressed");
       break;

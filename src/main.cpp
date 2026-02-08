@@ -4,6 +4,7 @@
 #include "remote.h"
 #include "mode_intro.h"
 #include "mode_round1.h"
+#include "mode_round3.h"
 #include "mode_round4.h"
 #include "patterns.h" // finaleUpdate()
 
@@ -22,7 +23,7 @@ bool flickerArmed = false;
 bool flickerFastArmed = false;
 // Per-quadrant very-fast flicker flags
 bool flickerFastPerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
-// Per-quadrant fixed-lose flicker flags (CODE_100 -> fixed 40ms)
+// Per-quadrant fixed-lose flicker flags (CODE_R100 -> fixed 40ms)
 bool flickerLosePerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 // Per-quadrant steady state
 bool steadyActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
@@ -33,19 +34,19 @@ bool topRightColumnsWhite[QUAD_COLS];
 // MODE_R3: per-column color state: 0 = BLUE, 1 = GREEN
 uint8_t topLeftColumnColor[QUAD_COLS] = {0};
 uint8_t topRightColumnColor[QUAD_COLS] = {0};
-// New: steady-armed state for CODE_7 -> CODE_PREV sequence
+// New: steady-armed state for CODE_7 -> CODE_QUEEN_RAP_MORE sequence
 bool steadyArmed = false;
-// Bottom-left lock: CODE_2 makes bottom-left stay bright red during MODE_R2
+// Bottom-left lock: CODE_R2 makes bottom-left stay bright red during MODE_R2
 bool bottomLeftLocked = false;
 
-// --- CODE_EQ per-round "lose" actions ---
+// --- CODE_ROUND_FINAL per-round "lose" actions ---
 bool round1BottomLeftEliminated = false;
 bool round2LoseSequenceRequested = false;
 bool round3ResetAndBlinkRequested = false;
 bool round3BlinkActive = false;
 bool round4Eliminated[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 
-// Lose-sequence state for CODE_100 (MODE_R2)
+// Lose-sequence state for CODE_R100 (MODE_R2)
 // Sequence: toggle 10 times at exactly 50ms intervals, then draw X over bear.
 bool loseSequenceActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 int loseSequenceCount[NUM_STRIPS_CONNECTED] = {0, 0, 0, 0};
@@ -53,7 +54,7 @@ unsigned long loseSequenceNextToggle[NUM_STRIPS_CONNECTED] = {0, 0, 0, 0};
 
 // (Removed per-LED random flashing: top quadrants remain at their default colors)
 
-// --- Random transient flashes (independent of CODE_PREV/CODE_NEXT) ---
+// --- Random transient flashes (independent of CODE_QUEEN_RAP_MORE/CODE_DOCTOR_RAP_MORE) ---
 // These randomly pick LEDs in the top quadrants and flash them a random
 // color for a short duration, then restore the original color.
 const unsigned long RANDOM_FLASH_TICK_MS = 100; // how often we attempt new flashes
@@ -66,13 +67,13 @@ uint32_t randomFlashSavedColor[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD] = {0};
 unsigned long randomFlashEndTime[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD] = {0};
 unsigned long nextRandomFlashTick = 0;
 
-// --- Round 3 blink state (triggered by CODE_EQ) ---
+// --- Round 3 blink state (triggered by CODE_ROUND_FINAL) ---
 static bool r3BlinkDisplayOn = true;
 static unsigned long r3NextBlinkToggle = 0;
 static const unsigned long R3_BLINK_INTERVAL_MS = 300;
 
 // Start the Round 2 lose sequence on the bottom-right quadrant.
-// This is the same behavior that used to live under CODE_100.
+// This is the same behavior that used to live under CODE_R100.
 static void round2StartBottomRightLoseSequence() {
   int idx = Q_BOTTOM_RIGHT;
 
@@ -114,7 +115,7 @@ static void round2StartBottomRightLoseSequence() {
   Serial.println("Round 2: Lose sequence started (bottom-right)");
 }
 
-// Enter/reset Round 3 visuals (used on mode entry, and also for CODE_EQ reset).
+// Enter/reset Round 3 visuals (used on mode entry, and also for CODE_ROUND_FINAL reset).
 static void round3EnterState() {
   ledsAllOff();
 
@@ -224,28 +225,6 @@ void randomFlashTryStart() {
   }
 }
 
-// Update active flashes and restore colors when their duration ends.
-void randomFlashUpdate() {
-  bool dirty[NUM_STRIPS_CONNECTED] = {false, false, false, false};
-  unsigned long now = millis();
-  for (int q = Q_TOP_LEFT; q <= Q_TOP_RIGHT; q++) {
-    for (uint16_t physIdx = 0; physIdx < LEDS_PER_QUAD; physIdx++) {
-      int flat = q * LEDS_PER_QUAD + physIdx;
-      if (!randomFlashActive[flat]) continue;
-      if (now >= randomFlashEndTime[flat]) {
-        // Restore saved color
-        strips[q].setPixelColor(physIdx, randomFlashSavedColor[flat]);
-        randomFlashActive[flat] = false;
-        randomFlashSavedColor[flat] = 0;
-        randomFlashEndTime[flat] = 0;
-        dirty[q] = true;
-      }
-    }
-  }
-  // Push updates for quadrants that changed
-  for (int q = Q_TOP_LEFT; q <= Q_TOP_RIGHT; q++) if (dirty[q]) strips[q].show();
-}
-
 void setup() {
   Serial.begin(9600); // Open connection to computer
   while (!Serial) delay(10); // Wait for connection
@@ -319,7 +298,7 @@ void loop() {
         // keep bottomLeftLocked = true so bottom-left stays bright red during MODE_R2
       }
 
-      // CODE_EQ (and legacy CODE_100) request the lose sequence.
+      // CODE_ROUND_FINAL (and legacy CODE_R100) request the lose sequence.
       // We start it only when IR is idle to keep the remote reliable.
       if (round2LoseSequenceRequested && IrReceiver.isIdle()) {
         round2LoseSequenceRequested = false;
@@ -400,7 +379,7 @@ void loop() {
         // Choose next toggle interval based on whether this quadrant was
         // selected for VERY-fast flicker (CODE_9) or normal flicker.
         if (flickerLosePerQuad[q]) {
-          // Fixed, deterministic very-fast flicker for CODE_100
+          // Fixed, deterministic very-fast flicker for CODE_R100
           nextToggleTimePerQuad[q] = millis() + 40;
         } else if (flickerFastPerQuad[q]) {
           nextToggleTimePerQuad[q] = millis() + random(20, 100);
@@ -416,7 +395,7 @@ void loop() {
         round3EnterState();
       }
 
-      // CODE_EQ: reset top quadrants to the Round 3 start state and begin blinking.
+      // CODE_ROUND_FINAL: reset top quadrants to the Round 3 start state and begin blinking.
       if (round3ResetAndBlinkRequested && IrReceiver.isIdle()) {
         round3EnterState();
         round3ResetAndBlinkRequested = false;
@@ -473,7 +452,7 @@ void loop() {
       break;
   }
 
-  // Small pause to keep things stable. When the CODE_100 fixed very-fast
+  // Small pause to keep things stable. When the CODE_R100 fixed very-fast
   // flicker is active we avoid the long 50ms delay so the remote is polled
   // more often (increasing chance of catching button presses between show() calls).
   bool anyLoseActive = false;

@@ -4,7 +4,7 @@
 //
 // Changes requested:
 // - Each quadrant's jar has a different base color (red/blue/green/white).
-// - CODE_EQ can eliminate multiple quadrants by drawing a red X overlay.
+// - CODE_ROUND_FINAL can eliminate multiple quadrants by drawing a red X overlay.
 // - Round 4 uses its own progress drawing function so you can change this
 //   visualization later without touching Round 1.
 
@@ -113,6 +113,47 @@ static inline void roundR4Reset() {
   Serial.println("Round 4: Scores Reset");
 }
 
+// light up Q_BOTTOM_LEFT quadrant to celebrate a win.
+static inline void celebrateWin() {
+  uint32_t yellow = strips[0].Color(255, 255, 0);
+  uint32_t fireworkColors[] = {
+    strips[0].Color(255, 0, 0),      // red
+    strips[0].Color(0, 255, 0),      // green
+    strips[0].Color(0, 0, 255),      // blue
+    strips[0].Color(255, 255, 0),    // yellow
+    strips[0].Color(255, 0, 255),    // magenta
+    strips[0].Color(0, 255, 255)     // cyan
+  };
+  
+  strips[Q_BOTTOM_LEFT].clear();
+  
+  // Draw yellow jar borders
+  // Left border
+  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
+    for (uint8_t x = 0; x < 2; x++) {
+      strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(x, y), yellow);
+    }
+  }
+  
+  // Right border
+  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
+    for (uint8_t x = QUAD_COLS - 2; x < QUAD_COLS; x++) {
+      strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(x, y), yellow);
+    }
+  }
+  
+  // Bottom border
+  for (uint8_t y = 0; y < 2; y++) {
+    for (uint8_t x = 0; x < QUAD_COLS; x++) {
+      strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(x, y), yellow);
+    }
+  }
+  
+  // TODO: Draw crown
+
+  strips[Q_BOTTOM_LEFT].show();
+}
+
 // Update Round 4 scoring + visuals.
 static inline void roundR4Update() {
   // If any eliminated flags changed, force a redraw.
@@ -120,6 +161,7 @@ static inline void roundR4Update() {
     if (round4Eliminated[q] != r4PrevEliminated[q]) {
       r4Dirty[q] = true;
       r4PrevEliminated[q] = round4Eliminated[q];
+      celebrateWin();
     }
   }
 
@@ -146,3 +188,4 @@ static inline void roundR4Update() {
     r4Dirty[q] = false;
   }
 }
+
