@@ -13,7 +13,7 @@
 #define CODE_R3  0xA65988FF
 #define CODE_R4  0x9F6088FF
 #define CODE_5  0xE31CFF00
-#define CODE_STEADY  0xBD42FF00
+#define CODE_QUEEN_FLICKERING  0xBD42FF00
 #define CODE_FLICKER_SLOW  0xAD52FF00
 #define CODE_FLICKER_FAST  0xB54AFF00
 #define CODE_QUEEN_RAP_MORE  0xBB44FF00
@@ -64,15 +64,13 @@ void loop() {
         case CODE_5:
           Serial.println(">> ACTION: 5 Pressed!");
           break;
-        case CODE_STEADY:
+        case CODE_QUEEN_FLICKERING:
           Serial.println(">> ACTION: 7 Pressed!");
           break;
         case CODE_FLICKER_SLOW:
           Serial.println(">> ACTION: 8 Pressed!");
           break;
-        case CODE_FLICKER_FAST:
-          Serial.println(">> ACTION: 9 Pressed!");
-          break;
+        /* CODE_FLICKER_FAST behavior removed in main build; ignore in test */
         case CODE_QUEEN_RAP_MORE:
           Serial.println(">> ACTION: Prev Pressed!");
           break;

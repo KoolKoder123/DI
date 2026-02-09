@@ -48,6 +48,10 @@ enum Mode {
   MODE_INTRO,
   MODE_R1,
   MODE_R2,
+  MODE_R2_QUEEN_FLICKERING,
+  MODE_R2_INFLUENCER_FLICKERING,
+  MODE_R2_DOCTOR_FLICKERING,
+  MODE_R2_FINAL,
   MODE_R3,
   MODE_R4,
   MODE_FINALE
@@ -59,9 +63,15 @@ inline const char* modeToString(Mode m) {
     case MODE_OFF: return "MODE_OFF";
     case MODE_INTRO: return "MODE_INTRO";
     case MODE_R1: return "MODE_R1";
+
     case MODE_R2: return "MODE_R2";
+    case MODE_R2_QUEEN_FLICKERING: return "MODE_R2_QUEEN_FLICKERING";        
+    case MODE_R2_INFLUENCER_FLICKERING: return "MODE_R2_INFLUENCER_FLICKERING";
+    case MODE_R2_DOCTOR_FLICKERING: return "MODE_R2_DOCTOR_FLICKERING";
+    case MODE_R2_FINAL: return "MODE_R2_FINAL";
+    
     case MODE_R3: return "MODE_R3";
-    case MODE_R4: return "MODE_R4";
+    case MODE_R4: return "MODE_R4";    
     case MODE_FINALE: return "MODE_FINALE";
     default: return "UNKNOWN_MODE";
   }
@@ -77,14 +87,11 @@ extern Mode currentMode;
 extern bool flickerActive[NUM_STRIPS_CONNECTED];
 extern unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED];
 extern bool bearOnPerQuad[NUM_STRIPS_CONNECTED];
-// Per-quadrant steady-on flags (set by CODE_STEADY + selector or CODE_R2 lock)
+// Per-quadrant steady-on flags (set by CODE_QUEEN_FLICKERING + selector or CODE_R2 lock)
 extern bool steadyActive[NUM_STRIPS_CONNECTED];
 // Armed state: CODE_FLICKER_SLOW arms flicker; CODE_QUEEN_RAP_MORE triggers it for a quadrant
 extern bool flickerArmed;
-// When true CODE_FLICKER_FAST armed: select quadrants to flicker at a faster rate
-extern bool flickerFastArmed;
-// Per-quadrant marker for VERY fast flicker (set by CODE_FLICKER_FAST selection)
-extern bool flickerFastPerQuad[NUM_STRIPS_CONNECTED];
+// NOTE: very-fast (FAST) flicker behavior removed
 // Per-quadrant fixed-lose flicker flag (activated by CODE_R100)
 extern bool flickerLosePerQuad[NUM_STRIPS_CONNECTED];
 // (No single-target quadrant variable; per-quadrant arrays are used)
@@ -103,7 +110,7 @@ extern unsigned long randomFlashEndTime[NUM_STRIPS_CONNECTED * LEDS_PER_QUAD];
 extern bool loseSequenceActive[NUM_STRIPS_CONNECTED];
 extern int loseSequenceCount[NUM_STRIPS_CONNECTED];
 extern unsigned long loseSequenceNextToggle[NUM_STRIPS_CONNECTED];
-// Armed state: CODE_STEADY arms a steady-on action for PREV to trigger
+// Armed state: CODE_QUEEN_FLICKERING arms a steady-on action for PREV to trigger
 extern bool steadyArmed;
 // When true the bottom-left quadrant stays bright red for the duration of MODE_R2
 extern bool bottomLeftLocked;

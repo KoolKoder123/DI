@@ -8,6 +8,7 @@
 
 #include <IRremote.hpp>
 #include "config.h"
+#include "mode_round2.h"
 
 // Some IRremote flag macros differ slightly between versions.
 // Provide safe fallbacks so this project stays buildable.
@@ -28,9 +29,12 @@
 #define CODE_R3  0xA65988FF
 #define CODE_R4  0x9F6088FF
 #define CODE_5  0xE31CFF00
-#define CODE_STEADY  0xEB1488FF
-#define CODE_FLICKER_SLOW  0xEA1588FF
-#define CODE_FLICKER_FAST  0xAD5288FF
+#define CODE_QUEEN_FLICKERING  0xEB1488FF
+#define CODE_DOCTOR_FLICKERING  0xEA1588FF
+#define CODE_INFLUENCER_FLICKERING 0xAD5288FF
+
+#define CODE_FLICKER_SLOW  0x11111111 // 0xEA1588FF1111 xxxx delete this
+#define CODE_FLICKER_FAST  0x11111112 // 0xAD5288FF1111 xxxx delete this
 #define CODE_QUEEN_RAP_MORE  0xAF5088FF
 #define CODE_DOCTOR_RAP_MORE  0xAE5188FF
 #define CODE_PAUSE 0xBC43FF00
@@ -55,11 +59,15 @@ static inline bool isKnownRemoteCode(uint32_t code) {
     case CODE_FINALE:
     case CODE_RESET:
     case CODE_R1:
+
     case CODE_R2:
+    case CODE_QUEEN_FLICKERING:
+    case CODE_INFLUENCER_FLICKERING:
+    case CODE_DOCTOR_FLICKERING:
+
     case CODE_R3:
     case CODE_R4:
     case CODE_5:
-    case CODE_STEADY:
     case CODE_FLICKER_SLOW:
     case CODE_FLICKER_FAST:
     case CODE_QUEEN_RAP_MORE:
@@ -195,23 +203,32 @@ void readRemote() {
     case CODE_R3:        currentMode = MODE_R3;     break;
     case CODE_R4:        currentMode = MODE_R4;     break;
     case CODE_5:        currentMode = MODE_FINALE; break;
-    case CODE_STEADY:
-      if (currentMode == MODE_R2) {
-        // Arm a steady-on action: wait for selectors to make quadrants steady.
-        // Disable flicker-armed so subsequent selector presses apply steady, not flicker.
-        steadyArmed = true;
-        flickerArmed = false;
-        // Also disable FAST-flicker arm so selectors will apply steady.
-        flickerFastArmed = false;
-        Serial.println("Steady armed: press selector(s) to set quadrant(s) steady");
+    case CODE_QUEEN_FLICKERING:
+      if (currentMode == MODE_R2 || currentMode == MODE_R2_DOCTOR_FLICKERING || 
+          currentMode == MODE_R2_INFLUENCER_FLICKERING || currentMode == MODE_R2_QUEEN_FLICKERING) {
+        currentMode = MODE_R2_QUEEN_FLICKERING;
+        Serial.println("Round 2: Queen Flickering mode");
+      }
+      break;    
+    case CODE_DOCTOR_FLICKERING:
+      if (currentMode == MODE_R2 || currentMode == MODE_R2_QUEEN_FLICKERING || 
+          currentMode == MODE_R2_INFLUENCER_FLICKERING || currentMode == MODE_R2_DOCTOR_FLICKERING) {
+        currentMode = MODE_R2_DOCTOR_FLICKERING;
+        Serial.println("Round 2: Doctor Flickering mode");
       }
       break;
+    case CODE_INFLUENCER_FLICKERING:
+      if (currentMode == MODE_R2 || currentMode == MODE_R2_QUEEN_FLICKERING || 
+          currentMode == MODE_R2_DOCTOR_FLICKERING || currentMode == MODE_R2_INFLUENCER_FLICKERING) {
+        currentMode = MODE_R2_INFLUENCER_FLICKERING;
+        Serial.println("Round 2: Influencer Flickering mode");
+      }
+      break;    
     case CODE_FLICKER_SLOW:
       if (currentMode == MODE_R2) {
         // Arm the flicker; do not start immediately. Wait for CODE_QUEEN_RAP_MORE.
         flickerArmed = true;
-        // If user chooses normal flicker, cancel any FAST-flicker arm
-        flickerFastArmed = false;
+        // If user chooses normal flicker, ensure steady is not armed
         // Also cancel steady-armed so selectors will apply flicker
         steadyArmed = false;
         Serial.println("Flicker armed: press PREV to begin quadrant flicker");
@@ -220,22 +237,13 @@ void readRemote() {
     case CODE_FLICKER_FAST:
       if (currentMode == MODE_R2) {
         // Arm the FAST flicker (shorter interval)
-        flickerFastArmed = true;
-        // Cancel other armed states so selectors trigger FAST-flicker
-        flickerArmed = false;
+        // NOTE: FAST flicker behavior removed. Fall back to normal flicker arm.
+        flickerArmed = true;
         steadyArmed = false;
-        Serial.println("Fast flicker armed: press selector(s) to begin VERY fast quadrant flicker");
+        Serial.println("Fast flicker removed: arming normal flicker instead");
       }
       break;
-    case CODE_R100:
-      // Backward-compatible: CODE_R100 triggers the same "lose" behavior as CODE_ROUND_FINAL in Round 2.
-      if (currentMode == MODE_R2) {
-        round2LoseSequenceRequested = true;
-        Serial.println("Round 2: lose sequence requested (bottom-right)");
-      } else {
-        Serial.println("100 button pressed");
-      }
-      break;
+
     // When CODE_FLICKER_SLOW has armed flicker, these keys choose the quadrant to flicker
     case CODE_DOCTOR_RAP_MORE:
       if (currentMode == MODE_R3) {
@@ -290,64 +298,38 @@ void readRemote() {
         }
       } else if (currentMode == MODE_R2) {
         int idx = Q_TOP_RIGHT;
-        if (flickerFastArmed) {
-          // Start VERY fast flickering top-right quadrant (additive)
-          flickerActive[idx] = true;
-          flickerFastPerQuad[idx] = true;
-          bearOnPerQuad[idx] = true;
-          steadyActive[idx] = false; // stop steady if it was steady
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
-          nextToggleTimePerQuad[idx] = millis() + random(20, 80);
-        } else if (flickerArmed) {
+        if (flickerArmed) {
           // Start flickering top-right quadrant (additive)
-          flickerFastPerQuad[idx] = false;
           flickerActive[idx] = true;
           bearOnPerQuad[idx] = true;
-          steadyActive[idx] = false; // stop steady if it was steady
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          steadyActive[idx] = false; // stop steady if it was steady          
+          drawBearFace(idx);
           nextToggleTimePerQuad[idx] = millis() + random(100, 400);
         } else if (steadyArmed) {
           // Make top-right quadrant steady (stop flicker and draw bear)
           flickerActive[idx] = false;
-          flickerFastPerQuad[idx] = false;
           steadyActive[idx] = true;
-          bearOnPerQuad[idx] = true;
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          bearOnPerQuad[idx] = true;          
+          drawBearFace(idx);
         }
       }
       break;
     case CODE_PAUSE:
       if (currentMode == MODE_R2) {
         int idx = Q_BOTTOM_RIGHT;
-        if (flickerFastArmed) {
-          // Start VERY fast flickering bottom-right quadrant (additive)
-          flickerActive[idx] = true;
-          flickerFastPerQuad[idx] = true;
-          bearOnPerQuad[idx] = true;
-          steadyActive[idx] = false;
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
-          nextToggleTimePerQuad[idx] = millis() + random(20, 80);
-        } else if (flickerArmed) {
+        if (flickerArmed) {
           // Start flickering bottom-right quadrant (additive)
-          flickerFastPerQuad[idx] = false;
           flickerActive[idx] = true;
           bearOnPerQuad[idx] = true;
           steadyActive[idx] = false;
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          drawBearFace(idx);
           nextToggleTimePerQuad[idx] = millis() + random(100, 400);
         } else if (steadyArmed) {
           // Make bottom-right quadrant steady
           flickerActive[idx] = false;
-          flickerFastPerQuad[idx] = false;
           steadyActive[idx] = true;
           bearOnPerQuad[idx] = true;
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          drawBearFace(idx);
         }
       }
       break;
@@ -401,32 +383,21 @@ void readRemote() {
         }
       } else if (currentMode == MODE_R2) {
         int idx = Q_TOP_LEFT;
-        if (flickerFastArmed) {
-          // Start VERY fast flickering top-left quadrant (additive)
-          flickerActive[idx] = true;
-          flickerFastPerQuad[idx] = true;
-          bearOnPerQuad[idx] = true;
-          steadyActive[idx] = false;
-          uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
-          nextToggleTimePerQuad[idx] = millis() + random(20, 80);
-        } else if (flickerArmed) {
+        if (flickerArmed) {
           // Start flickering top-left quadrant (additive)
-          flickerFastPerQuad[idx] = false;
           flickerActive[idx] = true;
           bearOnPerQuad[idx] = true;
           steadyActive[idx] = false;
           uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor);
+          drawBearFace(idx);
           nextToggleTimePerQuad[idx] = millis() + random(100, 400);
         } else if (steadyArmed) {
           // Make top-left quadrant steady (not flickering)
           flickerActive[idx] = false;
-          flickerFastPerQuad[idx] = false;
           steadyActive[idx] = true;
           bearOnPerQuad[idx] = true;
           uint32_t bearColor = strips[0].Color(15, 8, 0);
-          drawBearFace(idx, strips[0].Color(255,255,255), bearColor); // top-left steady
+          drawBearFace(idx); // top-left steady
         }
       }
       break;
@@ -437,10 +408,12 @@ void readRemote() {
         // Round 1: bottom-left loses (red X overlay on current jar).
         round1BottomLeftEliminated = true;
         Serial.println("Round 1: bottom-left eliminated (X)");
-      } else if (currentMode == MODE_R2) {
-        // Round 2: trigger the bottom-right lose sequence (ends with red X over bear).
-        round2LoseSequenceRequested = true;
-        Serial.println("Round 2: lose sequence requested (bottom-right)");
+      } else if (currentMode == MODE_R2 || currentMode == MODE_R2_QUEEN_FLICKERING || currentMode == MODE_R2_INFLUENCER_FLICKERING || currentMode == MODE_R2_DOCTOR_FLICKERING) {
+        currentMode = MODE_R2_FINAL;
+        Serial.println("Round 2: Final sequence initiated");
+      } else if (currentMode == MODE_R2_FINAL) {
+        // Already in final mode; restart the sequence if desired
+        Serial.println("Round 2: Final sequence restarted");
       } else if (currentMode == MODE_R3) {
         // Round 3: reset the top quadrants and blink them.
         round3ResetAndBlinkRequested = true;

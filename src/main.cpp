@@ -4,6 +4,7 @@
 #include "remote.h"
 #include "mode_intro.h"
 #include "mode_round1.h"
+#include "mode_round2.h"
 #include "mode_round3.h"
 #include "mode_round4.h"
 #include "patterns.h" // finaleUpdate()
@@ -19,10 +20,7 @@ unsigned long nextToggleTimePerQuad[NUM_STRIPS_CONNECTED] = {0,0,0,0};
 bool bearOnPerQuad[NUM_STRIPS_CONNECTED] = {true, true, true, true};
 // Arm state used to select which quadrant to start flickering
 bool flickerArmed = false;
-// Fast-arm for CODE_FLICKER_FAST selections
-bool flickerFastArmed = false;
-// Per-quadrant very-fast flicker flags
-bool flickerFastPerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
+// NOTE: very-fast (FAST) flicker behavior removed
 // Per-quadrant fixed-lose flicker flags (CODE_R100 -> fixed 40ms)
 bool flickerLosePerQuad[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 // Per-quadrant steady state
@@ -81,14 +79,14 @@ static void round2StartBottomRightLoseSequence() {
   for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
     if (i == idx) continue;
     flickerActive[i] = false;
-    flickerFastPerQuad[i] = false;
+    (void)0;
     flickerLosePerQuad[i] = false;
     steadyActive[i] = false;
   }
 
   // Prepare bottom-right for the lose sequence.
   flickerActive[idx] = false;
-  flickerFastPerQuad[idx] = false;
+  (void)0;
   flickerLosePerQuad[idx] = false;
   steadyActive[idx] = false;
 
@@ -98,9 +96,7 @@ static void round2StartBottomRightLoseSequence() {
   bearOnPerQuad[idx] = true;
 
   // Draw bear so the sequence starts from a known state.
-  uint32_t bearColor = strips[0].Color(15, 8, 0);
-  uint32_t white = strips[0].Color(255, 255, 255);
-  drawBearFace(idx, white, bearColor);
+  drawBearFace(idx);
 
   // Clean up a few pixels that occasionally end up white.
   // (This keeps the face consistent before the flashing starts.)
@@ -132,7 +128,7 @@ static void round3EnterState() {
   // Ensure steady state on all quadrants so nothing flickers
   for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
     flickerActive[i] = false;
-    flickerFastPerQuad[i] = false;
+    (void)0;
     flickerLosePerQuad[i] = false;
     nextToggleTimePerQuad[i] = 0;
     bearOnPerQuad[i] = true;
@@ -284,14 +280,14 @@ void loop() {
         // Draw bear face only on the other quadrants
         for(int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
           if (q == Q_BOTTOM_LEFT) continue;
-          drawBearFace(q, strips[0].Color(255,255,255), bearColor);
+          drawBearFace(q);
         }
         // Reset per-quadrant flicker state on mode entry
         for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
           flickerActive[i] = false;
           nextToggleTimePerQuad[i] = 0;
           bearOnPerQuad[i] = true;
-          flickerFastPerQuad[i] = false;
+          (void)0;
           flickerLosePerQuad[i] = false;
         }
         flickerArmed = false; // clear any armed state
@@ -316,7 +312,7 @@ void loop() {
             if (bearOnPerQuad[q]) {
               if (!(q == Q_BOTTOM_LEFT && bottomLeftLocked)) {
                 uint32_t bearColor = strips[0].Color(15, 8, 0);
-                drawBearFace(q, strips[0].Color(255,255,255), bearColor);
+                drawBearFace(q);
               }
             } else {
               if (!(q == Q_BOTTOM_LEFT && bottomLeftLocked)) {
@@ -334,7 +330,7 @@ void loop() {
               loseSequenceCount[q] = 0;
               // Ensure final visible state is the bear, then draw X over it
               uint32_t bearColor = strips[0].Color(15, 8, 0);
-              drawBearFace(q, strips[0].Color(255,255,255), bearColor);
+              drawBearFace(q);
               // Clear any random flash entries for this quadrant so restores won't override
               for (uint16_t physIdx = 0; physIdx < LEDS_PER_QUAD; physIdx++) {
                 int flat = q * LEDS_PER_QUAD + physIdx;
@@ -346,7 +342,7 @@ void loop() {
               drawRedXOver(q);
               // Stop other flicker flags for this quadrant
               flickerActive[q] = false;
-              flickerFastPerQuad[q] = false;
+              (void)0;
               flickerLosePerQuad[q] = false;
               steadyActive[q] = false;
             }
@@ -366,7 +362,7 @@ void loop() {
           // If the quadrant is locked (bottom-left), skip drawing bear there
           if (!(q == Q_BOTTOM_LEFT && bottomLeftLocked)) {
             uint32_t bearColor = strips[0].Color(15, 8, 0);
-            drawBearFace(q, strips[0].Color(255,255,255), bearColor);
+            drawBearFace(q);
           }
         } else {
           // Turn off this quadrant unless it's locked to bright red
@@ -377,17 +373,58 @@ void loop() {
         }
 
         // Choose next toggle interval based on whether this quadrant was
-        // selected for VERY-fast flicker (CODE_FLICKER_FAST) or normal flicker.
+        // selected for fixed lose flicker or normal flicker.
         if (flickerLosePerQuad[q]) {
           // Fixed, deterministic very-fast flicker for CODE_R100
           nextToggleTimePerQuad[q] = millis() + 40;
-        } else if (flickerFastPerQuad[q]) {
-          nextToggleTimePerQuad[q] = millis() + random(20, 100);
         } else {
           nextToggleTimePerQuad[q] = millis() + random(300, 600);
         }
       }
       // Bear face stays on if not flickering
+      break;
+
+
+    case MODE_R2_QUEEN_FLICKERING:
+      if (currentMode != previousMode && IrReceiver.isIdle()) {
+        resetFlickerBear(Q_TOP_LEFT);
+        resetFlickerBear(Q_TOP_RIGHT);
+        resetFlickerBear(Q_BOTTOM_RIGHT);
+      }
+      if (IrReceiver.isIdle()) {
+        flickerBear(Q_TOP_LEFT);
+      }
+      break;
+
+    case MODE_R2_DOCTOR_FLICKERING:
+      if (currentMode != previousMode && IrReceiver.isIdle()) {
+        resetFlickerBear(Q_TOP_LEFT);
+        resetFlickerBear(Q_TOP_RIGHT);
+        resetFlickerBear(Q_BOTTOM_RIGHT);
+      }
+      if (IrReceiver.isIdle()) {
+        flickerBear(Q_TOP_RIGHT);
+      }
+      break;
+
+    case MODE_R2_INFLUENCER_FLICKERING:
+      if (currentMode != previousMode && IrReceiver.isIdle()) {
+        resetFlickerBear(Q_TOP_LEFT);
+        resetFlickerBear(Q_TOP_RIGHT);
+        resetFlickerBear(Q_BOTTOM_RIGHT);
+      }
+      if (IrReceiver.isIdle()) {
+        flickerBear(Q_BOTTOM_RIGHT);
+      }
+      break;
+
+    case MODE_R2_FINAL:
+      if (currentMode != previousMode && IrReceiver.isIdle()) {
+        round2Final();
+      }
+      if (IrReceiver.isIdle()) {
+        round2FinalUpdate();
+      }
       break;
 
     case MODE_R3:
