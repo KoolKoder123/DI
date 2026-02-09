@@ -116,14 +116,6 @@ static inline void roundR4Reset() {
 // light up Q_BOTTOM_LEFT quadrant to celebrate a win.
 static inline void celebrateWin() {
   uint32_t yellow = strips[0].Color(255, 255, 0);
-  uint32_t fireworkColors[] = {
-    strips[0].Color(255, 0, 0),      // red
-    strips[0].Color(0, 255, 0),      // green
-    strips[0].Color(0, 0, 255),      // blue
-    strips[0].Color(255, 255, 0),    // yellow
-    strips[0].Color(255, 0, 255),    // magenta
-    strips[0].Color(0, 255, 255)     // cyan
-  };
   
   strips[Q_BOTTOM_LEFT].clear();
   

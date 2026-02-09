@@ -39,25 +39,6 @@ uint16_t xyToIndex(uint8_t x, uint8_t y) {
   }
 }
 
-// Turns on 'rows' amount of LEDs from the bottom up.
-// Used in Round 1 to show the container filling up.
-void drawProgress(uint8_t q, uint8_t rows, uint32_t color) {
-  if (q >= NUM_STRIPS_CONNECTED) return;
-  
-  strips[q].clear(); // Turn off everything first
-
-  // Fill `rows` usable lines from the bottom up using xyToIndex to
-  // map to physical strip indices (skipping turn LEDs).
-  if (rows > QUAD_ROWS) rows = QUAD_ROWS;
-
-  for (uint8_t y = 0; y < rows; y++) {
-    for (uint8_t x = 0; x < QUAD_COLS; x++) {
-      uint16_t idx = xyToIndex(x, y);
-      strips[q].setPixelColor(idx, color);
-    }
-  }
-  strips[q].show();
-}
 
 // Fills the whole quadrant with one color
 void fillQuad(uint8_t q, uint32_t color) {
@@ -76,62 +57,8 @@ void fillQuad(uint8_t q, uint32_t color) {
 // The "jar filling" drawing used in Round 1 was moved into mode_round1.h.
 // That keeps leds.h focused on generic drawing helpers.
 
-// Draws a jar border: Left, Right, and Bottom sides with 2-column thickness
-// Border is white, interior is empty for content
-void drawJarBorder(uint8_t q, uint32_t borderColor) {
-  if (q >= NUM_STRIPS_CONNECTED) return;
-  
-  strips[q].clear(); // Start fresh
-  
-  // Left side: First 2 columns, all rows
-  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
-    for (uint8_t x = 0; x < 2; x++) {
-      uint16_t idx = xyToIndex(x, y);
-      strips[q].setPixelColor(idx, borderColor);
-    }
-  }
-  
-  // Right side: Last 2 columns, all rows
-  for (uint8_t y = 0; y < QUAD_ROWS; y++) {
-    for (uint8_t x = QUAD_COLS - 2; x < QUAD_COLS; x++) {
-      uint16_t idx = xyToIndex(x, y);
-      strips[q].setPixelColor(idx, borderColor);
-    }
-  }
-  
-  // Bottom side: First 2 rows (rows 0-1, at the bottom), all columns
-  for (uint8_t y = 0; y < 2; y++) {
-    for (uint8_t x = 0; x < QUAD_COLS; x++) {
-      uint16_t idx = xyToIndex(x, y);
-      strips[q].setPixelColor(idx, borderColor);
-    }
-  }
-  
-  strips[q].show();
-}
 
-// Fills the interior of the jar (excluding the border) from bottom up
-// This is used for scoring in Round 1
-void drawProgressInterior(uint8_t q, uint8_t rows, uint32_t color) {
-  if (q >= NUM_STRIPS_CONNECTED) return;
-  
-  // Only fill the interior: columns 2-16 (excluding 2-column borders on each side)
-  // Rows: From row 2 (above bottom border) up to row 17
-  int maxInteriorRows = QUAD_ROWS - 2; // Can fill up to row 17
-  
-  // Limit rows to interior space
-  if (rows > maxInteriorRows) rows = maxInteriorRows;
-  
-  // Light up interior LEDs
-  for (uint8_t y = 2; y < 2 + rows; y++) { // Start from row 2 (above bottom border)
-    for (uint8_t x = 2; x < QUAD_COLS - 2; x++) { // Columns 2 to 16 (excluding borders)
-      uint16_t idx = xyToIndex(x, y);
-      strips[q].setPixelColor(idx, color);
-    }
-  }
-  
-  strips[q].show();
-}
+// (Jar interior drawing moved into mode_round1.h)
 
 static inline void ledsAllOff() {
   // ATTEMPT 1: Clear the buffer and push
