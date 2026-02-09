@@ -252,48 +252,45 @@ void readRemote() {
           Serial.println("Round 3: blinking - ignoring NEXT");
           break;
         }
-        // MODE_R3: find the very first GREEN column from the left and
-        // convert it to BLUE. Scan the entire top-left (left->right) first,
-        // then scan top-right (left->right) only if none found.
+        // Randomized conversion: change either 1 or 2 GREEN columns to BLUE.
+        // Choose 1 or 2 uniformly.
+        int toConvert = random(0, 2) + 1; // 1 or 2
+        int convertedCount = 0;
         int ql = Q_TOP_LEFT;
         int qr = Q_TOP_RIGHT;
         uint32_t blue = strips[0].Color(0,0,255);
-        bool converted = false;
-        // Scan top-left fully
-        for (int x = 0; x < QUAD_COLS; x++) {
+
+        // First pass: scan top-left left->right
+        for (int x = 0; x < QUAD_COLS && convertedCount < toConvert; x++) {
           if (topLeftColumnColor[x] == 1) {
-            for (int y = 0; y < QUAD_ROWS; y++) strips[ql].setPixelColor(xyToIndex(x, y), blue);
-            topLeftColumnColor[x] = 0; // now blue
-            // Clear any random flash state for LEDs in this column so
-            // a pending random-flash restore doesn't overwrite the change.
             for (int y = 0; y < QUAD_ROWS; y++) {
               uint16_t physIdx = xyToIndex(x, y);
+              strips[ql].setPixelColor(physIdx, blue);
               int flat = ql * LEDS_PER_QUAD + physIdx;
               randomFlashActive[flat] = false;
               randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
               randomFlashEndTime[flat] = 0;
             }
+            topLeftColumnColor[x] = 0; // now blue
             strips[ql].show();
-            converted = true;
-            break;
+            convertedCount++;
           }
         }
-        // If nothing converted in top-left, scan top-right
-        if (!converted) {
-          for (int x = 0; x < QUAD_COLS; x++) {
-            if (topRightColumnColor[x] == 1) {
-              for (int y = 0; y < QUAD_ROWS; y++) {
-                uint16_t physIdx = xyToIndex(x, y);
-                strips[qr].setPixelColor(physIdx, blue);
-                int flat = qr * LEDS_PER_QUAD + physIdx;
-                randomFlashActive[flat] = false;
-                randomFlashSavedColor[flat] = strips[qr].getPixelColor(physIdx);
-                randomFlashEndTime[flat] = 0;
-              }
-              topRightColumnColor[x] = 0; // now blue
-              strips[qr].show();
-              break;
+
+        // Second pass: if still need conversions, scan top-right left->right
+        for (int x = 0; x < QUAD_COLS && convertedCount < toConvert; x++) {
+          if (topRightColumnColor[x] == 1) {
+            for (int y = 0; y < QUAD_ROWS; y++) {
+              uint16_t physIdx = xyToIndex(x, y);
+              strips[qr].setPixelColor(physIdx, blue);
+              int flat = qr * LEDS_PER_QUAD + physIdx;
+              randomFlashActive[flat] = false;
+              randomFlashSavedColor[flat] = strips[qr].getPixelColor(physIdx);
+              randomFlashEndTime[flat] = 0;
             }
+            topRightColumnColor[x] = 0; // now blue
+            strips[qr].show();
+            convertedCount++;
           }
         }
       } else if (currentMode == MODE_R2) {
@@ -341,14 +338,15 @@ void readRemote() {
           Serial.println("Round 3: blinking - ignoring PREV");
           break;
         }
-        // MODE_R3: find the first BLUE column from the right and convert it to GREEN.
-        // Search top-right first, then top-left. Only convert one column per press.
+        // Randomized conversion: change either 1 or 2 BLUE columns to GREEN.
+        int toConvert = random(0, 2) + 1; // 1 or 2
+        int convertedCount = 0;
         int ql = Q_TOP_LEFT;
         int qr = Q_TOP_RIGHT;
         uint32_t green = strips[0].Color(0,255,0);
-        bool converted = false;
-          for (int x = QUAD_COLS - 1; x >= 0; x--) {
-          // Check top-right for BLUE (0)
+
+        // First pass: scan top-right right->left
+        for (int x = QUAD_COLS - 1; x >= 0 && convertedCount < toConvert; x--) {
           if (topRightColumnColor[x] == 0) {
             for (int y = 0; y < QUAD_ROWS; y++) {
               uint16_t physIdx = xyToIndex(x, y);
@@ -360,25 +358,24 @@ void readRemote() {
             }
             topRightColumnColor[x] = 1; // now green
             strips[qr].show();
-            converted = true;
-            break;
+            convertedCount++;
           }
         }
-        if (!converted) {
-          for (int x = QUAD_COLS - 1; x >= 0; x--) {
-            if (topLeftColumnColor[x] == 0) {
-              for (int y = 0; y < QUAD_ROWS; y++) {
-                uint16_t physIdx = xyToIndex(x, y);
-                strips[ql].setPixelColor(physIdx, green);
-                int flat = ql * LEDS_PER_QUAD + physIdx;
-                randomFlashActive[flat] = false;
-                randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
-                randomFlashEndTime[flat] = 0;
-              }
-              topLeftColumnColor[x] = 1; // now green
-              strips[ql].show();
-              break;
+
+        // Second pass: if still need conversions, scan top-left right->left
+        for (int x = QUAD_COLS - 1; x >= 0 && convertedCount < toConvert; x--) {
+          if (topLeftColumnColor[x] == 0) {
+            for (int y = 0; y < QUAD_ROWS; y++) {
+              uint16_t physIdx = xyToIndex(x, y);
+              strips[ql].setPixelColor(physIdx, green);
+              int flat = ql * LEDS_PER_QUAD + physIdx;
+              randomFlashActive[flat] = false;
+              randomFlashSavedColor[flat] = strips[ql].getPixelColor(physIdx);
+              randomFlashEndTime[flat] = 0;
             }
+            topLeftColumnColor[x] = 1; // now green
+            strips[ql].show();
+            convertedCount++;
           }
         }
       } else if (currentMode == MODE_R2) {
