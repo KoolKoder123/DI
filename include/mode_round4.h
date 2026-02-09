@@ -24,20 +24,20 @@ static bool r4PrevEliminated[NUM_STRIPS_CONNECTED] = {false, false, false, false
 // For now we keep the same "jar" shape as Round 1, but each quadrant uses a
 // different color and we keep this function local to Round 4.
 static inline void getRound4JarColors(uint8_t q, uint32_t* borderColor, uint32_t* fillColor) {
-  // Color choices:
-  // - Bottom-left: BRIGHT YELLOW (PURE)
-  // - Top-left: RED
-  // - Top-right: PINK
-  // - Bottom-right: BLUE
-  uint8_t br = 0, bg = 0, bb = 0;
-  uint8_t fr = 0, fg = 0, fb = 0;
+  // Color choices (border is now always white; fills remain per-quadrant):
+  // - Bottom-left fill: BRIGHT YELLOW
+  // - Top-left fill: RED
+  // - Top-right fill: PINK
+  // - Bottom-right fill: BLUE
+  uint8_t br = 255, bg = 255, bb = 255; // white border for all jars
+  uint8_t fr = 80, fg = 80, fb = 80;     // default fill (dark)
 
   switch (q) {
-    case Q_BOTTOM_LEFT:  br = 255; bg = 255; bb = 0;   fr = 255; fg = 255; fb = 0;  break; // bright yellow
-    case Q_TOP_RIGHT:    br = 255; bg = 105; bb = 180; fr = 80;  fg = 30;  fb = 60; break; // pink
-    case Q_TOP_LEFT:     br = 255; bg = 0;   bb = 0;   fr = 80;  fg = 0;  fb = 0;  break; // red
-    case Q_BOTTOM_RIGHT: br = 0;   bg = 0;   bb = 255; fr = 0;   fg = 0;   fb = 80; break; // blue
-    default:             br = 255; bg = 255; bb = 255; fr = 80;  fg = 80; fb = 80; break;
+    case Q_BOTTOM_LEFT:  fr = 255; fg = 255; fb = 0;   break; // bright yellow
+    case Q_TOP_RIGHT:    fr = 80;  fg = 30;  fb = 60;  break; // pink
+    case Q_TOP_LEFT:     fr = 80;  fg = 0;   fb = 0;   break; // red
+    case Q_BOTTOM_RIGHT: fr = 0;   fg = 0;   fb = 80;  break; // blue
+    default:             fr = 80;  fg = 80;  fb = 80;  break;
   }
 
   if (borderColor) *borderColor = strips[0].Color(br, bg, bb);
