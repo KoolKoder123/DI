@@ -279,3 +279,27 @@ static inline void roundR4Update() {
   }
 }
 
+// Force the Round 4 final visuals immediately and update internal
+// state so subsequent `roundR4Update()` calls won't override it.
+static inline void round4ForceFinalDisplay() {
+  // Ensure internal rows/dirty flags reflect the forced final
+  for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
+    r4Rows[i] = 0;
+    // We've drawn the forced final immediately; don't mark dirty so
+    // the regular update won't redraw and erase the crown.
+    r4Dirty[i] = false;
+    // Align previous-eliminated state so update() doesn't try to reapply overlays
+    r4PrevEliminated[i] = round4Eliminated[i];
+  }
+
+  // Draw final visuals for each quadrant now, then overlay crown.
+  for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+    drawRound4Progress(q, r4Rows[q], round4Eliminated[q]);
+  }
+
+  // If bottom-left is the winner, draw the crown overlay last so it remains visible.
+  if (!round4Eliminated[Q_BOTTOM_LEFT]) {
+    celebrateWin();
+  }
+}
+

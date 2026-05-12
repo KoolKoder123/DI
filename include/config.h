@@ -20,7 +20,7 @@
 
 // --- PINS ---
 // Digital pins for the LED Data wires
-const uint8_t LED_PINS[4]  = {8, 9, 6, 7};
+const uint8_t LED_PINS[4]  = {9, 8, 6, 7};
 // Digital pins for the IR Beam Break sensors
 const uint8_t BEAM_PINS[4] = {2, 3, 4, 5};
 // Pin for the IR Remote Receiver
@@ -29,9 +29,9 @@ const uint8_t BEAM_PINS[4] = {2, 3, 4, 5};
 //Contestant Mapping to Quadrants
 enum ContestantQuadrantMapping {
   QUEEN = 0,
-  DOCTOR = 1,
+  DOCTOR = 3,
   HEIR = 2,
-  INFLUENCER = 3
+  INFLUENCER = 1
 };
 
 // Physical quadrant index aliases (adjust if wiring differs)
@@ -128,3 +128,10 @@ extern bool round3BlinkActive;
 
 // Round 4: mark eliminated quadrants (draw red X overlay).
 extern bool round4Eliminated[NUM_STRIPS_CONNECTED];
+
+// When true, entering MODE_R4 should preserve the forced final display
+// that was triggered externally (for example, from the Intro spiral).
+extern bool round4ForceFinal;
+
+// When true, a preview has frozen the display and MODE_OFF should not clear LEDs.
+extern bool previewFrozen;

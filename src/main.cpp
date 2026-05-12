@@ -13,6 +13,12 @@
 Mode currentMode = MODE_OFF;
 // Remember the previous mode so we can run enter-actions once
 Mode previousMode = MODE_OFF;
+// When true, a preview has frozen the display and MODE_OFF should not clear LEDs.
+bool previewFrozen = false;
+
+// If true, MODE_R4 was entered because of an immediate "final" request
+// and the normal mode-entry reset behavior should be suppressed.
+bool round4ForceFinal = false;
 
 // Flickering variables (per-quadrant)
 bool flickerActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
@@ -242,13 +248,22 @@ void loop() {
   // 1. Always check the remote first
   readRemote();
 
+  // If we left MODE_R4, clear any forced-final marker so normal entry
+  // behavior resumes on future MODE_R4 entries.
+  if (currentMode != MODE_R4 && round4ForceFinal) {
+    round4ForceFinal = false;
+  }
+
   // 2. Run the logic for the current Game Mode
   switch (currentMode) {
     case MODE_OFF:
       // Ensure all LEDs are turned off and reset to initial state
       // Only invoke once when entering MODE_OFF (or when idle after a mode change)
       if (currentMode != previousMode && IrReceiver.isIdle()) {
-        ledsAllOff();
+        // If a preview explicitly froze the display, do not clear LEDs here.
+        if (!previewFrozen) {
+          ledsAllOff();
+        }
       }
       break;
       
@@ -473,8 +488,13 @@ void loop() {
       // Starts as a copy of MODE_R1 behaviour, but lives in its own file
       // so you can change Round 4 later without touching Round 1.
       if (currentMode != previousMode && IrReceiver.isIdle()) {
-        ledsAllOff();
-        roundR4Reset();
+        // When a forced final is active, avoid clearing the LEDs which
+        // would erase the immediate final display drawn by the remote
+        // handler. Still reset internal state only when not forced.
+        if (!round4ForceFinal) {
+          ledsAllOff();
+          roundR4Reset();
+        }
         beamsReset();
       }
       if (IrReceiver.isIdle()) roundR4Update();

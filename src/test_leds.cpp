@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 
-#define LED_PIN     7 
+#define LED_PIN     6 
 #define NUM_LEDS    350    
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -37,7 +37,7 @@ void loop() {
     Serial.print("Lit LED #");
     Serial.println(i);
     
-    delay(50);
+    delay(1);
   }
 
   Serial.println("--- ALL LEDS ON. TEST COMPLETE. ---");

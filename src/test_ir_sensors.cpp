@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#define IR_PIN     2   // The White/Yellow wire from the Receiver
+#define IR_PIN     3   // The White/Yellow wire from the Receiver
 
 // Variables to track the beam status
 int counter = 0;
