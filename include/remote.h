@@ -700,24 +700,64 @@ void readRemote() {
       strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(13, 17), gray);
       strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(14, 17), gray);
 
-      // Quarter note in Q_TOP_RIGHT near the right-edge microphone.
-      // Notehead: 2x2 at (16,8)-(17,9); stem: 5 LEDs up the right side.
-      uint32_t quarterNoteColor = noteColors[random(0, 6)];
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(16, 8),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 8),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(16, 9),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 9),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 7),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 6),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 5),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 4),  quarterNoteColor);
-      strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(17, 3),  quarterNoteColor);
-
-      // Push updates for affected quadrants
+      // Push microphone updates before the quarter note animation
       strips[Q_TOP_LEFT].show();
       strips[Q_BOTTOM_LEFT].show();
       strips[Q_TOP_RIGHT].show();
       strips[Q_BOTTOM_RIGHT].show();
+
+      // Quarter note: animate left 18 LEDs from Q_TOP_RIGHT into Q_TOP_LEFT.
+      // Shape offsets relative to the anchor (leftmost notehead column):
+      // notehead 2x2 + downward stem + flag tail.
+      const int qNCount = 10;
+      const int qNdx[qNCount] = {0, 1, 0, 1, 1, 1, 1, 1, 2, 3};
+      const int qNdy[qNCount] = {6, 6, 7, 7, 8, 9, 10, 11, 10, 9};
+
+      uint32_t quarterNoteColor = noteColors[random(0, 6)];
+      int qPrevStore[32];
+      int qPrevN = 0;
+
+      // Global x: Q_TOP_LEFT = 0..17, Q_TOP_RIGHT = 18..35.
+      // Anchor starts at local x=8 in Q_TOP_RIGHT → global 26.
+      int qGx = QUAD_COLS + 8;
+
+      auto drawQuarterNote = [&](int gx, uint32_t col, int store[], int &n) {
+        n = 0;
+        for (int i = 0; i < qNCount; i++) {
+          int ax = gx + qNdx[i];
+          int ay = qNdy[i];
+          int quad = (ax >= QUAD_COLS) ? Q_TOP_RIGHT : Q_TOP_LEFT;
+          int lx   = (ax >= QUAD_COLS) ? (ax - QUAD_COLS) : ax;
+          if (lx >= 0 && lx < QUAD_COLS && ay >= 0 && ay < QUAD_ROWS) {
+            setIfValid(quad, lx, ay, col);
+            if (store) store[n++] = (quad << 16) | (lx << 8) | ay;
+          }
+        }
+      };
+
+      // Draw initial position and show
+      drawQuarterNote(qGx, quarterNoteColor, qPrevStore, qPrevN);
+      strips[Q_TOP_LEFT].show();
+      strips[Q_TOP_RIGHT].show();
+
+      // Animate 18 steps to the left
+      for (int step = 0; step < 18; step++) {
+        delay(20);
+        clearPrev(qPrevStore, qPrevN);
+        qGx--;
+        drawQuarterNote(qGx, quarterNoteColor, qPrevStore, qPrevN);
+        strips[Q_TOP_LEFT].show();
+        strips[Q_TOP_RIGHT].show();
+      }
+
+      // Erase the note after movement completes
+      clearPrev(qPrevStore, qPrevN);
+      strips[Q_TOP_LEFT].show();
+      strips[Q_TOP_RIGHT].show();
+
+      // Freeze the display until another button is pressed.
+      previewFrozen = true;
+      currentMode = MODE_OFF;
       Serial.println("Preview: Four corner LEDs lit");
       break;
     }
