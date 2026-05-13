@@ -20,6 +20,12 @@ static bool r4Dirty[NUM_STRIPS_CONNECTED] = {true, true, true, true};
 // Track previous eliminated state so we can force a redraw when it changes.
 static bool r4PrevEliminated[NUM_STRIPS_CONNECTED] = {false, false, false, false};
 
+// Per-quadrant dropping 2x2-square animation state
+static bool r4DropActive[NUM_STRIPS_CONNECTED] = {false, false, false, false};
+static uint8_t r4DropX[NUM_STRIPS_CONNECTED] = {0, 0, 0, 0};
+static int8_t r4DropTopY[NUM_STRIPS_CONNECTED] = {0, 0, 0, 0};
+static unsigned long r4DropNextTick[NUM_STRIPS_CONNECTED] = {0, 0, 0, 0};
+
 // --- Round 4 drawing helper ---
 // For now we keep the same "jar" shape as Round 1, but each quadrant uses a
 // different color and we keep this function local to Round 4.
@@ -104,6 +110,7 @@ static inline void roundR4Reset() {
   for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
     r4Rows[i] = 0;
     r4Dirty[i] = true;
+    r4DropActive[i] = false;
   }
   // Clear elimination overlays
   for (int i = 0; i < NUM_STRIPS_CONNECTED; i++) {
@@ -255,26 +262,61 @@ static inline void roundR4Update() {
     }
   }
 
-  // 1) Read beam sensors and update score.
+  // 1) Read beam sensors and start drop animations.
   for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
     if (isBeamJustBroken(q)) {
       int maxInteriorRows = QUAD_ROWS - 2;
-      if (r4Rows[q] < maxInteriorRows) {
-        r4Rows[q]++;
-        r4Dirty[q] = true;
-        Serial.print("Point for Quad ");
-        Serial.println(q);
-      }
+      if (r4Rows[q] >= maxInteriorRows || r4DropActive[q]) continue;
+
+      int minX = 4;
+      int maxX = QUAD_COLS - 6;
+      r4DropX[q] = (uint8_t)random(minX, maxX + 1);
+      r4DropActive[q] = true;
+      r4DropTopY[q] = QUAD_ROWS - 1;
+      r4DropNextTick[q] = millis() + 10;
     }
   }
 
-  // 2) Redraw only the quadrants that changed.
+  // 2) Advance drop animations, then do regular dirty redraws.
+  unsigned long now = millis();
   for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) {
+    if (r4DropActive[q]) {
+      if (now >= r4DropNextTick[q]) {
+        r4DropTopY[q]--;
+        int bottomY = r4DropTopY[q] - 1;
+        int targetBottomY = 2 + r4Rows[q];
+
+        if (bottomY <= targetBottomY) {
+          r4DropActive[q] = false;
+          if (r4Rows[q] < (QUAD_ROWS - 2)) {
+            r4Rows[q]++;
+            r4Dirty[q] = true;
+            Serial.print("Point for Quad ");
+            Serial.println(q);
+          }
+          drawRound4Progress(q, r4Rows[q], round4Eliminated[q]);
+          continue;
+        }
+        r4DropNextTick[q] = now + 10;
+      }
+
+      // Draw base jar, then overlay the falling 2x2 ball.
+      drawRound4Progress(q, r4Rows[q], round4Eliminated[q]);
+
+      uint32_t dropColor = 0;
+      getRound4JarColors(q, nullptr, &dropColor);
+      int topY   = r4DropTopY[q];
+      int bottomY = topY - 1;
+      strips[q].setPixelColor(xyToIndex(r4DropX[q],     topY),    dropColor);
+      strips[q].setPixelColor(xyToIndex(r4DropX[q] + 1, topY),    dropColor);
+      strips[q].setPixelColor(xyToIndex(r4DropX[q],     bottomY), dropColor);
+      strips[q].setPixelColor(xyToIndex(r4DropX[q] + 1, bottomY), dropColor);
+      strips[q].show();
+      continue;
+    }
+
     if (!r4Dirty[q]) continue;
-
-    // Round 4 uses its own progress drawing.
     drawRound4Progress(q, r4Rows[q], round4Eliminated[q]);
-
     r4Dirty[q] = false;
   }
 }
