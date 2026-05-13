@@ -130,19 +130,14 @@ void drawRedXOver(uint8_t q) {
   strips[q].show();
 }
 
-// Draw a stylized 5-petal flower centered in the quadrant `q`.
-static inline void drawFlowerInQuad(uint8_t q) {
+// Draw a stylized 5-petal flower with caller-supplied colors.
+static inline void drawFlowerInQuadColored(uint8_t q, uint32_t petalColor, uint32_t centerColor, uint32_t stemColor) {
   if (q >= NUM_STRIPS_CONNECTED) return;
-
-  // Clear quadrant first
   strips[q].clear();
 
-  const int cx = (QUAD_COLS - 1) / 2;
-  const int cy = (QUAD_ROWS - 1) / 2;
-
-  static uint32_t yellow = strips[0].Color(255, 200, 0);
-  static uint32_t purple = strips[0].Color(128, 0, 128);
-  static uint32_t green = strips[0].Color(0, 255, 0);
+  uint32_t yellow = centerColor;
+  uint32_t purple = petalColor;
+  uint32_t green  = stemColor;
 
   // Center of flower
   strips[q].setPixelColor(xyToIndex(9, 9), yellow);
@@ -280,6 +275,15 @@ static inline void drawFlowerInQuad(uint8_t q) {
   strips[q].show();
 }
 
+// Convenience wrapper: flower with the original purple/yellow/green palette.
+static inline void drawFlowerInQuad(uint8_t q) {
+  drawFlowerInQuadColored(q,
+    strips[0].Color(128, 0, 128),  // purple petals
+    strips[0].Color(255, 200, 0),  // yellow center
+    strips[0].Color(0, 255, 0)     // green stem
+  );
+}
+
 // Draw a 12-LED yellow "ball" at the very bottom center of a quadrant.
 // The ball occupies a 4x4 block (rows startY..startY+3, cols startX..startX+3)
 // with the four corner pixels left off, resulting in 12 LEDs.
@@ -305,18 +309,18 @@ static inline void drawYellowBallBottomCenter(uint8_t q) {
   strips[q].show();
 }
 
-// Animate the yellow ball for the Round 1 preview:
+// Animate a colored ball for the preview sequence:
 // 1) Start at the very bottom center of the top-left quadrant.
 // 2) Move up row-by-row until it occupies rows 7..10 (startY == 7).
-// 3) Then move right, crossing into the top-right quadrant, until the
-//    ball occupies columns 7..10 of the top-right quadrant.
+// 3) Then move right, crossing into the top-right quadrant.
+// 4) Drop into the bottom-right jar and fill it row by row.
 // Movement step delay: 10 ms per row/column.
-static inline void animateYellowBallPreviewR1() {
-  const uint8_t startXLeft = (QUAD_COLS - 4) / 2; // initial centered X in left quad
-  const uint8_t finalStartY = 7; // target startY so ball covers rows 7,8,9,10
-  const uint8_t targetStartXRight = (QUAD_COLS - 4) / 2; // final X in right quad (local)
+static inline void animateBallPreview(uint32_t ballColor) {
+  const uint8_t startXLeft = (QUAD_COLS - 4) / 2;
+  const uint8_t finalStartY = 7;
+  const uint8_t targetStartXRight = (QUAD_COLS - 4) / 2;
 
-  uint32_t yellow = strips[0].Color(255, 255, 0);
+  uint32_t yellow = ballColor;
 
   // Helper lambdas
   auto clearBallAt = [&](int combinedX, int startY) {
@@ -471,4 +475,9 @@ static inline void animateYellowBallPreviewR1() {
   }
 
   // Done: leave jar filled rows updated
+}
+
+// Convenience wrapper: yellow ball (original Round 1 preview color).
+static inline void animateYellowBallPreviewR1() {
+  animateBallPreview(strips[0].Color(255, 255, 0));
 }

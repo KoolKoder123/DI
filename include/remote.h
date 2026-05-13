@@ -222,10 +222,362 @@ void readRemote() {
     }
 
     case CODE_PREVIEW_R2: {
-      // Turn entire display yellow
-      uint32_t yellow = strips[0].Color(255, 255, 0);
-      for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) fillQuad(q, yellow);
-      Serial.println("Preview: All Yellow");
+      // Bee rotated 90° CCW about (8,8): transform (x,y) -> (16-y, x).
+      // Original right-facing bee now faces up: stinger at bottom (y=5),
+      // head at top (y=11), left wing at x=3..5, right wing at x=11..13.
+      ledsAllOff();
+
+      // Draw bee in Q_BOTTOM_RIGHT first (static — stays lit during bear animation)
+      uint32_t beeYellow = strips[Q_BOTTOM_RIGHT].Color(255, 200, 0);
+      uint32_t beeWhite  = strips[Q_BOTTOM_RIGHT].Color(120, 120, 120);
+      uint32_t beeOrange  = strips[Q_BOTTOM_RIGHT].Color(70, 20, 0);
+
+      auto drawBee = [&]() {
+        // --- Body (yellow) ---
+        // Stinger (bottom): y=5, x=7,8,9
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7,  5), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8,  5), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9,  5), beeYellow);
+        // Left body edge (x=6): y=6..10
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(6,  6), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(6,  7), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(6,  8), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(6,  9), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(6, 10), beeYellow);
+        // Right body edge (x=10): y=6..10
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(10,  6), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(10,  7), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(10,  8), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(10,  9), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(10, 10), beeYellow);
+        // Yellow stripe at y=7 (interior): x=7,8,9
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7,  7), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8,  7), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9,  7), beeYellow);
+        // y=8 interior is black gap (only edges x=6 and x=10 lit, already set above)
+        // Yellow stripe at y=9 (interior): x=7,8,9
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7,  9), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8,  9), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9,  9), beeYellow);
+        // Head (top): y=11, x=7,8,9
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7, 11), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8, 11), beeYellow);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9, 11), beeYellow);
+
+        // --- Wings ---
+        // Left wing (x=3..5): rotated from original top wing (y=11..13)
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(5,  7), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(5,  8), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(5,  9), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(4,  6), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(4,  7), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(4,  8), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(4,  9), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(4, 10), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(3,  6), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(3,  7), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(3,  9), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(3, 10), beeWhite);
+        // Right wing (x=11..13): rotated from original bottom wing (y=3..5)
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(11,  7), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(11,  8), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(11,  9), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(12,  6), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(12,  7), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(12,  8), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(12,  9), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(12, 10), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(13,  6), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(13,  7), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(13,  9), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(13, 10), beeWhite);
+
+        //Antennae left
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7, 12), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(6, 13), beeWhite);
+
+        //Antennae right
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9, 12), beeWhite);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(10, 13), beeWhite);
+
+        // Striped pattern on bee body (orange)
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7,  10), beeOrange);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8,  10), beeOrange);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9,  10), beeOrange);
+
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7,  8), beeOrange);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8,  8), beeOrange);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9,  8), beeOrange);
+
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(7,  6), beeOrange);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(8,  6), beeOrange);
+        strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(9,  6), beeOrange);
+      };
+      drawBee();
+      strips[Q_BOTTOM_RIGHT].show();
+
+      // Bear animation: 18 rows down with clean cross-quadrant transition.
+      // Shifts 1-2  → 2 rows down entirely within Q_TOP_LEFT.
+      // Shifts 3-18 → 16 steps as the bear crosses the panel boundary and
+      //               descends through Q_BOTTOM_LEFT (ends at original y
+      //               positions but in Q_BOTTOM_LEFT).
+      strips[Q_TOP_LEFT].clear();
+      _bearFacePixelsCross(0);
+      strips[Q_TOP_LEFT].show();
+
+      for (int shift = 1; shift <= 18; shift++) {
+        delay(10);
+        strips[Q_TOP_LEFT].clear();
+        strips[Q_BOTTOM_LEFT].clear();
+        _bearFacePixelsCross(shift);
+        strips[Q_TOP_LEFT].show();
+        strips[Q_BOTTOM_LEFT].show();
+      }
+
+      // Bee flash: off → on → off → on (stays)
+      strips[Q_BOTTOM_RIGHT].clear();
+      strips[Q_BOTTOM_RIGHT].show();
+      delay(200);
+      drawBee();
+      strips[Q_BOTTOM_RIGHT].show();
+      delay(200);
+      strips[Q_BOTTOM_RIGHT].clear();
+      strips[Q_BOTTOM_RIGHT].show();
+      delay(200);
+      drawBee();
+      strips[Q_BOTTOM_RIGHT].show();
+
+      // Bee animation: move up 18 rows from Q_BOTTOM_RIGHT into Q_TOP_RIGHT.
+      // For each pixel at orig_y in Q_BOTTOM_RIGHT, shifted position is orig_y + shift.
+      // If orig_y + shift >= QUAD_ROWS, it crosses into Q_TOP_RIGHT at y - QUAD_ROWS.
+      auto drawBeeShifted = [&](int shift) {
+        auto putBeePixel = [&](int x, int orig_y, uint32_t color) {
+          int ny = orig_y + shift;
+          if (ny < QUAD_ROWS) {
+            strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(x, ny), color);
+          } else {
+            strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(x, ny - QUAD_ROWS), color);
+          }
+        };
+        // Stinger
+        putBeePixel(7, 5, beeYellow); putBeePixel(8, 5, beeYellow); putBeePixel(9, 5, beeYellow);
+        // Left body edge
+        putBeePixel(6, 6, beeYellow); putBeePixel(6, 7, beeYellow); putBeePixel(6, 8, beeYellow);
+        putBeePixel(6, 9, beeYellow); putBeePixel(6, 10, beeYellow);
+        // Right body edge
+        putBeePixel(10, 6, beeYellow); putBeePixel(10, 7, beeYellow); putBeePixel(10, 8, beeYellow);
+        putBeePixel(10, 9, beeYellow); putBeePixel(10, 10, beeYellow);
+        // Yellow stripes
+        putBeePixel(7, 7, beeYellow); putBeePixel(8, 7, beeYellow); putBeePixel(9, 7, beeYellow);
+        putBeePixel(7, 9, beeYellow); putBeePixel(8, 9, beeYellow); putBeePixel(9, 9, beeYellow);
+        // Head
+        putBeePixel(7, 11, beeYellow); putBeePixel(8, 11, beeYellow); putBeePixel(9, 11, beeYellow);
+        // Left wing
+        putBeePixel(5, 7, beeWhite); putBeePixel(5, 8, beeWhite); putBeePixel(5, 9, beeWhite);
+        putBeePixel(4, 6, beeWhite); putBeePixel(4, 7, beeWhite); putBeePixel(4, 8, beeWhite);
+        putBeePixel(4, 9, beeWhite); putBeePixel(4, 10, beeWhite);
+        putBeePixel(3, 6, beeWhite); putBeePixel(3, 7, beeWhite); putBeePixel(3, 9, beeWhite);
+        putBeePixel(3, 10, beeWhite);
+        // Right wing
+        putBeePixel(11, 7, beeWhite); putBeePixel(11, 8, beeWhite); putBeePixel(11, 9, beeWhite);
+        putBeePixel(12, 6, beeWhite); putBeePixel(12, 7, beeWhite); putBeePixel(12, 8, beeWhite);
+        putBeePixel(12, 9, beeWhite); putBeePixel(12, 10, beeWhite);
+        putBeePixel(13, 6, beeWhite); putBeePixel(13, 7, beeWhite); putBeePixel(13, 9, beeWhite);
+        putBeePixel(13, 10, beeWhite);
+        // Antennae
+        putBeePixel(7, 12, beeWhite); putBeePixel(6, 13, beeWhite);
+        putBeePixel(9, 12, beeWhite); putBeePixel(10, 13, beeWhite);
+        // Orange stripes
+        putBeePixel(7, 10, beeOrange); putBeePixel(8, 10, beeOrange); putBeePixel(9, 10, beeOrange);
+        putBeePixel(7, 8, beeOrange); putBeePixel(8, 8, beeOrange); putBeePixel(9, 8, beeOrange);
+        putBeePixel(7, 6, beeOrange); putBeePixel(8, 6, beeOrange); putBeePixel(9, 6, beeOrange);
+      };
+
+      for (int shift = 1; shift <= 18; shift++) {
+        delay(10);
+        strips[Q_BOTTOM_RIGHT].clear();
+        strips[Q_TOP_RIGHT].clear();
+        drawBeeShifted(shift);
+        strips[Q_BOTTOM_RIGHT].show();
+        strips[Q_TOP_RIGHT].show();
+      }
+
+      // Phase 1: Bear moves right 18 columns from Q_BOTTOM_LEFT into Q_BOTTOM_RIGHT.
+      // For each bear pixel at (orig_x, y): draw at (orig_x + rShift).
+      //   orig_x + rShift < QUAD_COLS  → Q_BOTTOM_LEFT
+      //   orig_x + rShift >= QUAD_COLS → Q_BOTTOM_RIGHT at x - QUAD_COLS
+      auto _bearPixRight = [&](int rShift) {
+        auto px = [&](int bx, int by, uint32_t col) {
+          int nx = bx + rShift;
+          if (nx < QUAD_COLS) {
+            strips[Q_BOTTOM_LEFT].setPixelColor(xyToIndex(nx, by), col);
+          } else {
+            strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(nx - QUAD_COLS, by), col);
+          }
+        };
+        px(6,11,white); px(10,11,white);
+        px(7,8,white); px(8,8,white); px(9,8,white);
+        px(7,9,white); px(9,9,white); px(8,7,white); px(8,6,white);
+        px(7,5,white); px(9,5,white); px(6,9,white); px(10,9,white);
+        px(3,13,white); px(4,12,white); px(5,13,white); px(4,13,white); px(4,14,white);
+        px(12,12,white); px(12,13,white); px(13,13,white); px(11,13,white); px(12,14,white);
+        for (int x=5; x<=11; x++) px(x, 2, white);
+        px(4,3,white); px(3,4,white); px(2,5,white);
+        px(1,6,white); px(1,7,white); px(1,8,white); px(1,9,white);
+        px(2,10,white); px(2,11,white); px(1,12,white); px(1,13,white); px(1,14,white);
+        px(2,15,white); px(3,16,white); px(4,16,white); px(5,16,white);
+        px(6,15,white); px(7,14,white);
+        px(12,3,white); px(13,4,white); px(14,5,white);
+        px(15,6,white); px(15,7,white); px(15,8,white); px(15,9,white);
+        px(14,10,white); px(14,11,white); px(15,12,white); px(15,13,white); px(15,14,white);
+        px(14,15,white); px(13,16,white); px(12,16,white); px(11,16,white);
+        px(10,15,white); px(9,14,white); px(8,14,white);
+        px(8,9,bearColor); px(8,5,bearColor); px(2,13,bearColor); px(14,13,bearColor);
+        for (int a=5; a<12; a++) px(a, 3,bearColor);
+        for (int a=4; a<13; a++) px(a, 4,bearColor);
+        for (int a=3; a< 7; a++) px(a, 5,bearColor);
+        for (int a=10;a<14; a++) px(a, 5,bearColor);
+        for (int a=2; a< 8; a++) px(a, 6,bearColor);
+        for (int a=9; a<15; a++) px(a, 6,bearColor);
+        for (int a=2; a< 8; a++) px(a, 7,bearColor);
+        for (int a=9; a<15; a++) px(a, 7,bearColor);
+        for (int a=2; a< 7; a++) px(a, 8,bearColor);
+        for (int a=10;a<15; a++) px(a, 8,bearColor);
+        for (int a=2; a< 6; a++) px(a, 9,bearColor);
+        for (int a=11;a<15; a++) px(a, 9,bearColor);
+        for (int a=3; a<14; a++) px(a,10,bearColor);
+        for (int a=3; a< 6; a++) px(a,11,bearColor);
+        for (int a=7; a<10; a++) px(a,11,bearColor);
+        for (int a=11;a<14; a++) px(a,11,bearColor);
+        for (int a=2; a< 4; a++) px(a,12,bearColor);
+        for (int a=5; a<12; a++) px(a,12,bearColor);
+        for (int a=13;a<15; a++) px(a,12,bearColor);
+        for (int a=6; a<11; a++) px(a,13,bearColor);
+        for (int a=2; a< 4; a++) px(a,14,bearColor);
+        for (int a=5; a< 7; a++) px(a,14,bearColor);
+        for (int a=10;a<12; a++) px(a,14,bearColor);
+        for (int a=13;a<15; a++) px(a,14,bearColor);
+        for (int a=3; a< 6; a++) px(a,15,bearColor);
+        for (int a=11;a<14; a++) px(a,15,bearColor);
+      };
+
+      for (int rShift = 1; rShift <= 18; rShift++) {
+        delay(10);
+        strips[Q_BOTTOM_LEFT].clear();
+        strips[Q_BOTTOM_RIGHT].clear();
+        _bearPixRight(rShift);
+        strips[Q_BOTTOM_LEFT].show();
+        strips[Q_BOTTOM_RIGHT].show();
+      }
+
+      // Phase 2: Bear moves up 18 rows from Q_BOTTOM_RIGHT into Q_TOP_RIGHT while
+      // bee flashes in Q_TOP_RIGHT. Uses millis() so both animations run simultaneously.
+      //
+      // Bear pixel at (x, orig_y) drawn at (x, orig_y + upShift):
+      //   if < QUAD_ROWS  → Q_BOTTOM_RIGHT
+      //   if >= QUAD_ROWS → Q_TOP_RIGHT at y - QUAD_ROWS
+      //
+      // Bee flash interval: 200ms initially; drops to 50ms as soon as the top row
+      // of the bear (orig_y=16) crosses into Q_TOP_RIGHT (orig_y+upShift=18 → upShift=2).
+      //
+      // Each redraw: clear both strips → draw bee (if beeOn) → draw bear always on top.
+      // Bear pixels steadily overwrite bee pixels at the same location; non-overlapping
+      // bee pixels continue their flash cycle.
+      auto _bearPixUp = [&](int uShift) {
+        auto px = [&](int bx, int orig_y, uint32_t col) {
+          int ny = orig_y + uShift;
+          if (ny < QUAD_ROWS) {
+            strips[Q_BOTTOM_RIGHT].setPixelColor(xyToIndex(bx, ny), col);
+          } else {
+            strips[Q_TOP_RIGHT].setPixelColor(xyToIndex(bx, ny - QUAD_ROWS), col);
+          }
+        };
+        px(6,11,white); px(10,11,white);
+        px(7,8,white); px(8,8,white); px(9,8,white);
+        px(7,9,white); px(9,9,white); px(8,7,white); px(8,6,white);
+        px(7,5,white); px(9,5,white); px(6,9,white); px(10,9,white);
+        px(3,13,white); px(4,12,white); px(5,13,white); px(4,13,white); px(4,14,white);
+        px(12,12,white); px(12,13,white); px(13,13,white); px(11,13,white); px(12,14,white);
+        for (int x=5; x<=11; x++) px(x, 2, white);
+        px(4,3,white); px(3,4,white); px(2,5,white);
+        px(1,6,white); px(1,7,white); px(1,8,white); px(1,9,white);
+        px(2,10,white); px(2,11,white); px(1,12,white); px(1,13,white); px(1,14,white);
+        px(2,15,white); px(3,16,white); px(4,16,white); px(5,16,white);
+        px(6,15,white); px(7,14,white);
+        px(12,3,white); px(13,4,white); px(14,5,white);
+        px(15,6,white); px(15,7,white); px(15,8,white); px(15,9,white);
+        px(14,10,white); px(14,11,white); px(15,12,white); px(15,13,white); px(15,14,white);
+        px(14,15,white); px(13,16,white); px(12,16,white); px(11,16,white);
+        px(10,15,white); px(9,14,white); px(8,14,white);
+        px(8,9,bearColor); px(8,5,bearColor); px(2,13,bearColor); px(14,13,bearColor);
+        for (int a=5; a<12; a++) px(a, 3,bearColor);
+        for (int a=4; a<13; a++) px(a, 4,bearColor);
+        for (int a=3; a< 7; a++) px(a, 5,bearColor);
+        for (int a=10;a<14; a++) px(a, 5,bearColor);
+        for (int a=2; a< 8; a++) px(a, 6,bearColor);
+        for (int a=9; a<15; a++) px(a, 6,bearColor);
+        for (int a=2; a< 8; a++) px(a, 7,bearColor);
+        for (int a=9; a<15; a++) px(a, 7,bearColor);
+        for (int a=2; a< 7; a++) px(a, 8,bearColor);
+        for (int a=10;a<15; a++) px(a, 8,bearColor);
+        for (int a=2; a< 6; a++) px(a, 9,bearColor);
+        for (int a=11;a<15; a++) px(a, 9,bearColor);
+        for (int a=3; a<14; a++) px(a,10,bearColor);
+        for (int a=3; a< 6; a++) px(a,11,bearColor);
+        for (int a=7; a<10; a++) px(a,11,bearColor);
+        for (int a=11;a<14; a++) px(a,11,bearColor);
+        for (int a=2; a< 4; a++) px(a,12,bearColor);
+        for (int a=5; a<12; a++) px(a,12,bearColor);
+        for (int a=13;a<15; a++) px(a,12,bearColor);
+        for (int a=6; a<11; a++) px(a,13,bearColor);
+        for (int a=2; a< 4; a++) px(a,14,bearColor);
+        for (int a=5; a< 7; a++) px(a,14,bearColor);
+        for (int a=10;a<12; a++) px(a,14,bearColor);
+        for (int a=13;a<15; a++) px(a,14,bearColor);
+        for (int a=3; a< 6; a++) px(a,15,bearColor);
+        for (int a=11;a<14; a++) px(a,15,bearColor);
+      };
+
+      {
+        int upShift = 0;
+        bool beeOn = true;
+        unsigned long beeFlashMs = 30;
+        unsigned long now = millis();
+        unsigned long nextBearStep = now + 20;
+        unsigned long nextBeeToggle = now + beeFlashMs;
+
+        while (true) {
+          now = millis();
+          bool needRedraw = false;
+
+          if (upShift < 18 && now >= nextBearStep) {
+            upShift++;
+            nextBearStep += 20;
+            needRedraw = true;
+          }
+
+          if (now >= nextBeeToggle) {
+            beeOn = !beeOn;
+            nextBeeToggle = now + beeFlashMs;
+            needRedraw = true;
+          }
+
+          if (needRedraw) {
+            strips[Q_BOTTOM_RIGHT].clear();
+            strips[Q_TOP_RIGHT].clear();
+            if (beeOn) drawBeeShifted(18);
+            _bearPixUp(upShift);
+            strips[Q_BOTTOM_RIGHT].show();
+            strips[Q_TOP_RIGHT].show();
+          }
+
+          if (upShift >= 18 && needRedraw) break;
+        }
+      }
+
+      previewFrozen = true;
+      currentMode = MODE_OFF;
+      Serial.println("Preview: Bee (BR) + Bear animation TL->BL");
       break;
     }
 
@@ -763,10 +1115,18 @@ void readRemote() {
     }
 
     case CODE_PREVIEW_R4: {
-      // Turn entire display green
-      uint32_t green = strips[0].Color(0, 255, 0);
-      for (int q = 0; q < NUM_STRIPS_CONNECTED; q++) fillQuad(q, green);
-      Serial.println("Preview: All Green");
+      // Same flower + jar + ball animation as Preview R1, with different colors:
+      // orange petals, white center, teal stem, orange ball.
+      ledsAllOff();
+      uint32_t r4Petal  = strips[0].Color(0, 0, 255); // blue
+      uint32_t r4Center = strips[0].Color(231, 84, 128); // pink
+      uint32_t r4Stem   = strips[0].Color(0, 255, 0); // green
+      drawFlowerInQuadColored(Q_BOTTOM_LEFT, r4Petal, r4Center, r4Stem);
+      drawRound1JarWithProgress(Q_BOTTOM_RIGHT, 0, strips[0].Color(255, 255, 255), false);
+      animateBallPreview(r4Petal);
+      previewFrozen = true;
+      currentMode = MODE_OFF;
+      Serial.println("Preview: Flower + Jar + Ball (R4 colors)");
       break;
     }
     case CODE_FINALE:  currentMode = MODE_FINALE; break;
